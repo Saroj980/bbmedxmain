@@ -130,6 +130,7 @@ export default function LocationsPage() {
         loading={loading}
         pageSize={9999}
         disablePagination
+        emptyMessage='No location found'
       />
 
       <LocationForm
