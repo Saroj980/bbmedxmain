@@ -1,26 +1,190 @@
+/* Import Tailwind + Animation Utilities */
 @import "tailwindcss";
+@import "tw-animate-css";
 
+/* Custom variant for dark-mode */
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================
+   BRAND FONTS (from layout.tsx)
+   ============================================ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --font-title: var(--font-title);   /* Poppins */
+  --font-body: var(--font-body);     /* Open Sans */
+
+  --sidebar-active-bg: var(--primary);
 }
 
+/* ============================================
+   SHADCN THEME TOKENS
+   ============================================ */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --font-sans: var(--font-body);      /* Open Sans */
+  --font-heading: var(--font-title);  /* Poppins */
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ======================================================
+   BBMedX BRAND COLORS (LIGHT MODE)
+   ====================================================== */
+:root {
+  --radius: 0.625rem;
+
+  --background: #F1FAF6;
+  --foreground: #2F3E46;
+
+  --primary: #009966;
+  --primary-foreground: #ffffff;
+
+  --secondary: #33BBA2;
+  --secondary-foreground: #ffffff;
+
+  --accent: #A8E063;
+  --accent-foreground: #2F3E46;
+
+  --muted: #e7f6ef;
+  --muted-foreground: #4f6b65;
+
+  --card: #ffffff;
+  --card-foreground: #2F3E46;
+
+  --popover: #ffffff;
+  --popover-foreground: #2F3E46;
+
+  --border: #d7ebe2;
+  --input: #dcefe7;
+  --ring: #33BBA2;
+
+  --chart-1: #009966;
+  --chart-2: #33BBA2;
+  --chart-3: #A8E063;
+  --chart-4: #52D1B1;
+  --chart-5: #7EE6C5;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #2F3E46;
+  --sidebar-primary: #009966;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #33BBA2;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #dcefe7;
+  --sidebar-ring: #33BBA2;
+}
+
+/* ======================================================
+   BBMedX BRAND COLORS (DARK MODE)
+   ====================================================== */
+.dark {
+  --background: #1e2a29;
+  --foreground: #e8fffa;
+
+  --card: #253634;
+  --card-foreground: #e8fffa;
+
+  --primary: #33BBA2;
+  --primary-foreground: #0f1514;
+
+  --secondary: #009966;
+  --secondary-foreground: #e8fffa;
+
+  --accent: #A8E063;
+  --accent-foreground: #1e2a29;
+
+  --muted: #30423f;
+  --muted-foreground: #9fd4c4;
+
+  --popover: #253634;
+  --popover-foreground: #e8fffa;
+
+  --border: #35524e;
+  --input: #3a5a55;
+  --ring: #33BBA2;
+
+  --chart-1: #33BBA2;
+  --chart-2: #009966;
+  --chart-3: #A8E063;
+  --chart-4: #7EE6C5;
+  --chart-5: #4EC7A8;
+
+  --sidebar: #253634;
+  --sidebar-foreground: #e8fffa;
+  --sidebar-primary: #33BBA2;
+  --sidebar-primary-foreground: #0f1514;
+  --sidebar-accent: #009966;
+  --sidebar-accent-foreground: #e8fffa;
+  --sidebar-border: #35524e;
+  --sidebar-ring: #33BBA2;
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    font-family: var(--font-body);
+    @apply bg-background text-foreground;
+  }
+
+  h1, h2, h3, h4, h5 {
+    font-family: var(--font-title);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.text-white {
+  color: #fff !important;
+  font-weight: 600 !important;
+  /* font-size: 0.8rem;
+  fon */
+}
+
+@media print {
+  button {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
 }
