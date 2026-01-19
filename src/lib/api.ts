@@ -1,7 +1,9 @@
 import axios from "axios";
 import { useUserStore } from "@/store/userStore";
 
-const BASE_URL = "http://127.0.0.1:8000";
+const PROD_API_URL = "https://westernpharmacy.com.np";
+const DEV_URL = "http://127.0.0.1:8000";
+const BASE_URL = PROD_API_URL;
 
 export const api = axios.create({
   baseURL: `${BASE_URL}/api`,
