@@ -25,22 +25,4 @@ export const journalColumns: ColumnDef<JournalRow>[] = [
       row.original.credit > 0 ? row.original.credit : "-",
   },
   
-  {
-    accessorKey: "balance",
-    header: "Balance",
-    cell: ({ row }) => {
-      const b = row.original.balance;
-      return (
-        <span
-          className={
-            b >= 0
-              ? "text-green-600 font-medium"
-              : "text-red-600 font-medium"
-          }
-        >
-          {Math.abs(b)} {b >= 0 ? "Dr" : "Cr"}
-        </span>
-      );
-    },
-  },
 ];
