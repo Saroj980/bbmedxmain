@@ -21,7 +21,7 @@ export function DataTable<TData>({
   loading = false,
   pageSize,
   disablePagination = false,
-  emptyMessage,
+  emptyMessage = 'No records found.',
   pagination,
 }: DataTableProps<TData>) {
   const [globalFilter, setGlobalFilter] = useState("");

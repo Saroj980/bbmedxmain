@@ -16,6 +16,6 @@ export interface DataTableProps<T> {
   breadcrumbs?: string[]; 
   pageSize?: number;
   disablePagination?: boolean;
-  emptyMessage: null | string;
+  emptyMessage?: null | string;
   pagination?: PaginationState; 
 }
