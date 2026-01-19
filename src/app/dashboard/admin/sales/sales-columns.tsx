@@ -3,7 +3,10 @@ import { ColumnDef } from "@tanstack/react-table";
 import { formatNepaliCurrency } from "@/utils/formatNepaliCurrency";
 import { Eye } from "lucide-react";
 
-export const salesColumns = (): ColumnDef<any>[] => {
+export const salesColumns = (
+  loadSales: () => void
+): ColumnDef<any>[] => {
+
   return [
     {
       header: "Invoice #",
@@ -110,19 +113,17 @@ export const salesColumns = (): ColumnDef<any>[] => {
       ),
     },
     {
-      header: "Actions",
-      id: "actions",
-      cell: ({ row }) => (
-        <div className="flex items-center justify-center">
-          <a
-            href={`/dashboard/admin/sales/${row.original.id}`}
-            className="text-emerald-600 hover:text-emerald-800"
-            title="View Sale"
-          >
-            <Eye size={18} />
-          </a>
-        </div>
-      ),
-    },
+  header: "Actions",
+  id: "actions",
+  cell: ({ row }) => (
+    <button
+      onClick={() => loadSales()}
+      className="text-emerald-600 hover:text-emerald-800"
+    >
+      <Eye size={18} />
+    </button>
+  ),
+},
+
   ];
 };
