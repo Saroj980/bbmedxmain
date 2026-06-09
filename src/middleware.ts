@@ -7,24 +7,22 @@ export function middleware(req: NextRequest) {
 
   const { pathname } = req.nextUrl;
 
-  // 1️⃣ If no token, protect dashboard routes
-  if (pathname.startsWith("/dashboard") && !token) {
-    return NextResponse.redirect(new URL("/login", req.url));
-  }
-
-  // 2️⃣ Role-based route protection
+  // 1️⃣ If no token or role, protect dashboard routes
   if (pathname.startsWith("/dashboard")) {
-    // Role: admin
+    if (!token || !role) {
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
+
+    // 2️⃣ Role-based route protection
+    // Ensure role matches the path or they are admin
     if (pathname.startsWith("/dashboard/admin") && role !== "admin") {
       return NextResponse.redirect(new URL(`/dashboard/${role}`, req.url));
     }
 
-    // Role: inventory
     if (pathname.startsWith("/dashboard/inventory") && role !== "inventory" && role !== "admin") {
       return NextResponse.redirect(new URL(`/dashboard/${role}`, req.url));
     }
 
-    // Role: staff
     if (pathname.startsWith("/dashboard/staff") && role !== "staff" && role !== "admin") {
       return NextResponse.redirect(new URL(`/dashboard/${role}`, req.url));
     }

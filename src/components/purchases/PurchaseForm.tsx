@@ -14,10 +14,20 @@ import { Product } from "@/types/product";
 import PurchaseItemsSection from "./PurchaseItemSection";
 import { formatNepaliCurrency } from "@/utils/formatNepaliCurrency";
 
+import { ADToBS } from "bikram-sambat-js";
+import { Checkbox } from "antd";
+import PurchasePaymentModal from "@/components/purchases/PurchasePaymentModal";
+import NepaliBsDatePicker from "@/components/common/NepaliBsDatePicker";
+import BsAdDateTimeDisplay from "@/components/common/BsAdDateTimeDisplay";
+
 
 export default function PurchaseForm({ open, onClose, refresh }: any) {
   const [loading, setLoading] = useState(false);
   const [systemInvoiceNo, setSystemInvoiceNo] = useState<string>("");
+  const [activeFiscalYear, setActiveFiscalYear] = useState<any>(null);
+  const [bsInvoiceDate, setBsInvoiceDate] = useState<string>(() => {
+    try { return ADToBS(dayjs().format("YYYY-MM-DD")); } catch { return ""; }
+  });
 
   const [paymentAccounts, setPaymentAccounts] = useState<any[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<any | null>(null);
@@ -32,6 +42,14 @@ export default function PurchaseForm({ open, onClose, refresh }: any) {
     invoice_date: dayjs().format("YYYY-MM-DD"),
     remarks: "",
   });
+
+  const [discount, setDiscount] = useState<number>(0);
+  const [discountPercent, setDiscountPercent] = useState<number>(0);
+
+  const [globalCarrierCost, setGlobalCarrierCost] = useState<number>(0);
+
+  const [isPaying, setIsPaying] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const [payment, setPayment] = useState<any>({
     amount: "",
@@ -49,6 +67,23 @@ export default function PurchaseForm({ open, onClose, refresh }: any) {
   useEffect(() => {
     api.get("/parties", { params: { type: "supplier" } }).then(res => {
       setSuppliers(res.data || []);
+    });
+
+    api.get("/fiscal-years").then(res => {
+      const active = res.data.find((f: any) => f.is_active);
+      if (active) {
+        setActiveFiscalYear(active);
+        const today = dayjs();
+        const start = dayjs(active.ad_start);
+        const end = dayjs(active.ad_end);
+        if (today.isBefore(start) || today.isAfter(end)) {
+          const adDate = start.format("YYYY-MM-DD");
+          setForm((f: any) => ({ ...f, invoice_date: adDate }));
+          setPayment((p: any) => ({ ...p, payment_date: adDate }));
+          setBsInvoiceDate(active.bs_start || ""); // clamp to FY start
+        }
+        // else: today is within FY, keep today's BS date already set
+      }
     });
 
     // api.get("/products").then(res => {
@@ -81,9 +116,17 @@ export default function PurchaseForm({ open, onClose, refresh }: any) {
 
 
   const [products, setProducts] = useState<any[]>([]);
+  const fetchProducts = async () => {
+    try {
+      const res = await api.get("/products");
+      setProducts(res.data || []);
+    } catch (err) {
+      console.error("Failed to fetch products", err);
+    }
+  };
 
   useEffect(() => {
-      api.get("/products").then(res => setProducts(res.data || []));
+    fetchProducts();
   }, []);
 
   useEffect(() => {
@@ -147,8 +190,12 @@ export default function PurchaseForm({ open, onClose, refresh }: any) {
   }, [items]);
 
   const totalAmount = useMemo(() => {
-    return +(grossAmount + vatAmount).toFixed(2);
-  }, [grossAmount, vatAmount]);
+    const totalCarrierCost = items.reduce((acc, cur) => acc + (Number(cur.carrier_cost) || 0), 0) + globalCarrierCost;
+    return Math.round(grossAmount + vatAmount + totalCarrierCost);
+  }, [grossAmount, vatAmount, items, globalCarrierCost]);
+
+  const netPayable = Math.max(0, totalAmount - (Number(discount) || 0));
+  const pendingAmount = isPaying ? Math.max(0, netPayable - (Number(payment.amount) || 0)) : netPayable;
 
 
   /* ---------------- Submit ---------------- */
@@ -172,11 +219,24 @@ export default function PurchaseForm({ open, onClose, refresh }: any) {
 
     const payload = {
       ...form,
-      items,
+      items: items.map(item => {
+        // Distribute global carrier cost proportionally based on grossAmount
+        const lineBase = Number(item.quantity || 0) * Number(item.cost_price || 0);
+        const distributedCarrierCost = grossAmount > 0 
+          ? (lineBase / grossAmount) * globalCarrierCost 
+          : 0;
+        
+        return {
+          ...item,
+          carrier_cost: Number((Number(item.carrier_cost || 0) + distributedCarrierCost).toFixed(2))
+        };
+      }),
+      carrier_cost: items.reduce((acc, cur) => acc + Number(cur.carrier_cost || 0), 0) + globalCarrierCost,
       gross_amount: grossAmount,
       vat_amount: vatAmount,
-      total_amount: totalAmount,
-      payment: payment.amount ? payment : null,
+      discount_amount: Number(discount) || 0,
+      total_amount: netPayable,
+      payment: isPaying && payment.amount ? payment : null,
     };
 
     console.log("Submitting purchase payload:", payload);
@@ -269,15 +329,16 @@ export default function PurchaseForm({ open, onClose, refresh }: any) {
                 }
               /> */}
 
-              <DatePicker
-                className="w-full mt-1"
-                format="YYYY-MM-DD"
-                placeholder="Select invoice date"
-                value={form.invoice_date ? dayjs(form.invoice_date) : null}
-                onChange={(d) =>
-                  setForm({ ...form, invoice_date: d ? d.format("YYYY-MM-DD") : null })
-                }
-                        />
+              <NepaliBsDatePicker
+                value={bsInvoiceDate}
+                minDate={activeFiscalYear?.bs_start}
+                maxDate={activeFiscalYear?.bs_end}
+                onChange={(adDate) => {
+                  if (adDate) setBsInvoiceDate(bsInvoiceDate); // picker controls its display
+                  setForm({ ...form, invoice_date: adDate || form.invoice_date });
+                }}
+              />
+              <BsAdDateTimeDisplay bsDate={bsInvoiceDate} />
             </div>
 
             <div>
@@ -292,6 +353,8 @@ export default function PurchaseForm({ open, onClose, refresh }: any) {
                 }
               />
             </div>
+
+
           </div>
 
           {/* Items */}
@@ -300,213 +363,165 @@ export default function PurchaseForm({ open, onClose, refresh }: any) {
             value={items}
             onChange={setItems}
             products={products}
+            refreshProducts={fetchProducts}
           />
 
-          {}
-          {/* Totals */}
-          <div className="bg-[#F6FAF8] border rounded-xl p-4 grid grid-cols-3 text-sm">
-            <div className="text-right">
-              <p className="text-gray-500">Gross</p>
-              <p className="font-semibold">
-                {formatNepaliCurrency(grossAmount)}
-              </p>
-            </div>
-
-            <div className="text-right">
-              <p className="text-gray-500">VAT (13%)</p>
-              <p className="font-semibold">
-                {formatNepaliCurrency(vatAmount)}
-              </p>
-            </div>
-
-            <div className="text-right">
-              <p className="text-gray-500">Total Payable</p>
-              <p className="font-semibold text-green-700">
-                {formatNepaliCurrency(totalAmount)}
-              </p>
-            </div>
-          </div>
-
-
-          <div className="border rounded-xl bg-white shadow-sm">
-            {/* Header */}
-            <div className="px-5 py-3 border-b flex items-center justify-between">
-              <div>
-                <h4 className="font-semibold text-gray-800">
-                  Payment Details
-                </h4>
-                <p className="text-xs text-gray-500">
-                  Optional – record payment at the time of purchase
-                </p>
-              </div>
-
-              <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600">
-                Accounts Payable
-              </span>
-            </div>
-
-            {/* Body */}
-            <div className="p-5 space-y-5">
-              {/* Main Row */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {/* Amount */}
-                <div>
-                  <label className="text-xs font-medium text-gray-600">
-                    Amount Paid
-                  </label>
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="0.00"
-                    className="mt-1 text-right"
-                    value={payment.amount}
-                    onChange={(e) =>
-                      setPayment({ ...payment, amount: e.target.value })
-                    }
-                  />
+          <div className="flex justify-end">
+            <div className="w-full md:w-1/2 bg-white border-2 border-[#009966]/20 rounded-2xl p-6 space-y-4 shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#009966]/5 rounded-full -mr-16 -mt-16" />
+              
+              <div className="space-y-3 relative">
+                <div className="flex justify-between text-[11px] text-gray-500 font-medium bg-gray-50/50 p-2 rounded">
+                  <span>Gross Total</span>
+                  <span className="text-gray-900 font-bold">{formatNepaliCurrency(grossAmount)}</span>
+                </div>
+                
+                <div className="flex justify-between text-[11px] text-gray-500 font-medium px-2">
+                  <span>Total VAT (13%)</span>
+                  <span className="text-orange-600">{formatNepaliCurrency(vatAmount)}</span>
                 </div>
 
-                {/* Method */}
-                <div>
-                  <label className="text-xs font-medium text-gray-600">
-                    Payment Method
-                  </label>
-                  <Select
-                    className="mt-1 w-full"
-                    value={payment.method}
-                    onChange={(v) =>
-                      setPayment({ ...payment, method: v })
-                    }
-                    options={[
-                      { value: "cash", label: "Cash" },
-                      { value: "bank", label: "Bank Transfer" },
-                      { value: "mobile", label: "Mobile Wallet" },
-                      { value: "cheque", label: "Cheque" },
-                    ]}
-                  />
+                {items.reduce((acc, cur) => acc + (Number(cur.carrier_cost) || 0), 0) > 0 && (
+                  <div className="flex justify-between text-[11px] text-gray-500 font-medium bg-blue-50/50 p-2 rounded">
+                    <span>Total Item Carrier Cost</span>
+                    <span className="text-blue-600 font-bold">
+                      {formatNepaliCurrency(items.reduce((acc, cur) => acc + (Number(cur.carrier_cost) || 0), 0))}
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center text-[11px] text-gray-500 font-medium px-2 gap-2 mt-2">
+                  <span>Global Carrier Charge</span>
+                  <div className="w-24">
+                    <Input
+                      type="number"
+                      placeholder="Amt"
+                      min={0}
+                      className="text-right h-7 border-gray-200 focus:border-[#009966] focus:ring-[#009966]/20 font-bold text-[11px]"
+                      value={globalCarrierCost || ""}
+                      onChange={e => setGlobalCarrierCost(Number(e.target.value))}
+                    />
+                  </div>
                 </div>
 
-                {/* Account */}
-                <div>
-                  <label className="text-xs font-medium text-gray-600">
-                    Paid From Account
-                  </label>
+                <div className="flex justify-between items-center text-[11px] text-gray-500 font-medium px-2 gap-2">
+                  <span>Overall Discount</span>
+                  <div className="flex items-center gap-1 flex-1 justify-end">
+                    <div className="w-20">
+                      <Input
+                        type="number"
+                        placeholder="%"
+                        className="text-right h-7 border-gray-200 focus:border-[#009966] focus:ring-[#009966]/20 font-bold text-[11px]"
+                        value={discountPercent || ""}
+                        onChange={e => {
+                          const pct = Number(e.target.value);
+                          const amt = (grossAmount * pct) / 100;
+                          setDiscountPercent(pct);
+                          setDiscount(amt);
+                        }}
+                      />
+                    </div>
+                    <div className="w-24">
+                      <Input
+                        type="number"
+                        placeholder="Amt"
+                        className="text-right h-7 border-gray-200 focus:border-[#009966] focus:ring-[#009966]/20 font-bold text-[11px]"
+                        value={discount || ""}
+                        onChange={e => {
+                          const amt = Number(e.target.value);
+                          const pct = grossAmount > 0 ? (amt / grossAmount) * 100 : 0;
+                          setDiscount(amt);
+                          setDiscountPercent(pct);
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
 
-                  <Select
-                    className="mt-1 w-full"
-                    placeholder="Select account"
-                    value={payment.account_id ?? undefined}
-                    onChange={(v) => {
-                      setPayment({ ...payment, account_id: v });
-                      setSelectedAccount(
-                        filteredAccounts.find(a => a.id === v) || null
-                      );
-                    }}
-                    options={filteredAccounts.map(a => ({
-                      value: a.id,
-                      label: `${a.name}`,
-                    }))}
-                  />
+                <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent my-4" />
 
-                  {accountBalance !== null && (
-                    <p className="mt-1 text-xs text-gray-500">
-                      Available Balance:{" "}
-                      <span
-                        className={
-                          accountBalance < Number(payment.amount || 0)
-                            ? "text-red-600 font-semibold"
-                            : "text-green-700 font-semibold"
-                        }
+                <div className="flex justify-between items-end">
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Net Payable Amount</span>
+                  <span className="text-3xl font-black text-[#009966] tracking-tighter">
+                    {formatNepaliCurrency(netPayable)}
+                  </span>
+                </div>
+
+                {/* Payment Section */}
+                <div className="mt-6 pt-4 border-t border-dashed border-gray-200">
+                  <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        id="record-payment"
+                        checked={isPaying}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setIsPaying(checked);
+                          if (checked) {
+                            setPayment((p: any) => ({
+                              ...p,
+                              amount: netPayable,
+                            }));
+                            setShowPaymentModal(true);
+                          } else {
+                            setPayment((p: any) => ({ ...p, amount: "" }));
+                          }
+                        }}
+                        className="scale-125 accent-[#009966]"
+                      />
+                      <label
+                        htmlFor="record-payment"
+                        className="text-sm font-extrabold text-gray-700 cursor-pointer uppercase tracking-tight"
                       >
-                        {formatNepaliCurrency(accountBalance)}
-                      </span>
-                    </p>
+                        Record Payment?
+                      </label>
+                    </div>
+                    {isPaying && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-xs font-bold text-[#009966] hover:bg-[#009966]/10"
+                        onClick={() => setShowPaymentModal(true)}
+                      >
+                        Edit Details
+                      </Button>
+                    )}
+                  </div>
+
+                  {isPaying && (
+                    <div className="mt-4 space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="flex justify-between items-center px-1">
+                        <span className="text-xs font-bold text-gray-400 uppercase">Total Paid</span>
+                        <span className="text-sm font-bold text-blue-600">
+                          {formatNepaliCurrency(Number(payment.amount) || 0)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center bg-red-50 p-4 rounded-xl border border-red-100">
+                        <span className="text-xs font-black text-red-400 uppercase tracking-widest">Pending Balance</span>
+                        <span className="text-xl font-black text-red-600 tracking-tighter">
+                          {formatNepaliCurrency(pendingAmount)}
+                        </span>
+                      </div>
+                    </div>
                   )}
                 </div>
-
-
-                {/* Date */}
-                <div>
-                  <label className="text-xs font-medium text-gray-600">
-                    Payment Date
-                  </label>
-                  <DatePicker
-                    className="mt-1 w-full"
-                    format="YYYY-MM-DD"
-                    value={dayjs(payment.payment_date)}
-                    onChange={(d) =>
-                      setPayment({
-                        ...payment,
-                        payment_date: d?.format("YYYY-MM-DD"),
-                      })
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Reference & Remarks */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium text-gray-600">
-                    Reference No.
-                  </label>
-                  <Input
-                    className="mt-1"
-                    placeholder="Cheque / Txn / Voucher no."
-                    value={payment.reference}
-                    onChange={(e) =>
-                      setPayment({ ...payment, reference: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-gray-600">
-                    Remarks
-                  </label>
-                  <Input
-                    className="mt-1"
-                    placeholder="Optional notes about this payment"
-                    value={payment.remarks}
-                    onChange={(e) =>
-                      setPayment({ ...payment, remarks: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Financial Summary */}
-              <div className="bg-gray-50 border rounded-lg p-4 grid grid-cols-1 md:grid-cols-3 text-sm">
-                <div className="text-right">
-                  <p className="text-gray-500">Invoice Total</p>
-                  <p className="font-semibold">
-                    {formatNepaliCurrency(totalAmount)}
-                  </p>
-                </div>
-
-                <div className="text-right">
-                  <p className="text-gray-500">Paid Amount</p>
-                  <p className="font-semibold text-blue-700">
-                    {formatNepaliCurrency((payment.amount || 0))}
-                  </p>
-                </div>
-
-                <div className="text-right">
-                  <p className="text-gray-500">Balance</p>
-                  <p className={`font-semibold ${
-                    totalAmount - Number(payment.amount || 0) > 0
-                      ? "text-red-600"
-                      : "text-green-700"
-                  }`}>
-                    {formatNepaliCurrency((totalAmount - Number(payment.amount || 0)))}
-                  </p>
-                </div>
               </div>
             </div>
           </div>
+
+
 
 
         </div>
+
+        <PurchasePaymentModal
+          open={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          onSave={(p: any) => setPayment(p)}
+          payment={payment}
+          setPayment={setPayment}
+          invoiceTotal={netPayable}
+        />
 
         {/* Footer */}
         <div className="absolute bottom-0 left-0 right-0 border-t p-4 flex justify-end gap-3 bg-white">

@@ -60,6 +60,22 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  --shadow-premium: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  --shadow-extra-soft: 0 2px 15px rgba(0, 0, 0, 0.03);
+
+  @keyframes draw {
+    from { stroke-dasharray: 400; stroke-dashoffset: 400; }
+    to { stroke-dasharray: 400; stroke-dashoffset: 0; }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  --animate-draw: draw 2s ease-out forwards;
+  --animate-fadeIn: fadeIn 0.5s ease-out forwards;
 }
 
 /* ======================================================

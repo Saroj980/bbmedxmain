@@ -12,6 +12,19 @@
 //   unit?: any;
 // }
 
+export interface ProductBatch {
+  batch_no: string;
+  manufactured_date?: string;
+  expiry_date?: string;
+  opening_stock: number;
+  current_stock: number;
+  purchase_price: number;
+  selling_price: number;
+  vat_included: boolean;
+  profit_margin: number;
+  auto_calculate: boolean;
+}
+
 export interface Product {
   id: number;
   name: string;
@@ -20,8 +33,10 @@ export interface Product {
   category_id?: number | null;
   is_active: boolean;
   meta?: Record<string, any>;
+  brand?: string;
 
   category?: Category;
+  batches?: ProductBatch[];
 
   // ✅ IMPORTANT: units is an ARRAY, not unit_id
   units: ProductUnit[];

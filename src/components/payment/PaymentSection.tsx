@@ -3,10 +3,12 @@
 
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
-import { Select, DatePicker } from "antd";
+import { Select } from "antd";
 import dayjs from "dayjs";
+import { ADToBS } from "bikram-sambat-js";
 import { api } from "@/lib/api";
 import { formatNepaliCurrency } from "@/utils/formatNepaliCurrency";
+import NepaliBsDatePicker from "@/components/common/NepaliBsDatePicker";
 
 export type PaymentMode = "purchase" | "sale" | "receipt" | "payment";
 
@@ -33,6 +35,17 @@ export default function PaymentSection({
   const [accounts, setAccounts] = useState<any[]>([]);
   const [accountBalance, setAccountBalance] = useState<number | null>(null);
   const [autoFilled, setAutoFilled] = useState(false);
+  const [bsPaymentDate, setBsPaymentDate] = useState<string>(() => {
+    try { return ADToBS(dayjs().format("YYYY-MM-DD")); } catch { return ""; }
+  });
+
+  // Keep BS display in sync if parent resets payment_date
+  useEffect(() => {
+    if (payment.payment_date) {
+      try { setBsPaymentDate(ADToBS(payment.payment_date)); } catch { /* ok */ }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payment.payment_date]);
 
   /* ---------------- Direction ---------------- */
   const isInflow = mode === "sale" || mode === "receipt";
@@ -196,15 +209,11 @@ export default function PaymentSection({
             <label className="text-xs font-medium text-gray-600">
               Payment Date
             </label>
-            <DatePicker
-              className="mt-1 w-full"
-              value={payment.payment_date}
-              onChange={d =>
-                setPayment({
-                  ...payment,
-                  payment_date: d || dayjs(),
-                })
-              }
+            <NepaliBsDatePicker
+              value={bsPaymentDate}
+              onChange={(adDate) => {
+                setPayment({ ...payment, payment_date: adDate || payment.payment_date });
+              }}
             />
           </div>
           {/* Amount */}

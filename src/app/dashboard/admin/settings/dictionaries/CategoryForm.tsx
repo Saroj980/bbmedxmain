@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
-export default function CategoryForm({ open, onClose, refresh, editData }) {
+export default function CategoryForm({ open, onClose, refresh, editData }: any) {
   const [form] = Form.useForm();
 
   useEffect(() => {

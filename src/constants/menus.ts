@@ -7,6 +7,7 @@ import {
   Truck,
   Users,
   BookOpen,
+  FileText,
   History,
   Settings,
 } from "lucide-react";
@@ -14,10 +15,14 @@ import {
 export const sidebarMenu = [
   {
     label: "Dashboard",
-    base: "dashboard",
     icon: LayoutDashboard,
-    href: "/dashboard/admin",
+    href: "/",
     permission: "dashboard.view",
+    children: [
+      { label: "Overview", href: "/", permission: "dashboard.view" },
+      { label: "Inventory", href: "/inventory", permission: "dashboard.view" },
+      { label: "Staff", href: "/staff", permission: "dashboard.view" },
+    ],
   },
 
   {
@@ -42,7 +47,8 @@ export const sidebarMenu = [
     permission: "stock.view",
     children: [
       { label: "Stock Status", href: "/stock", permission: "stock.view" },
-      { label: "Stock Adjust", href: "/adjust", permission: "stock.adjust" },
+      { label: "Bonus Stock", href: "/bonus-stock", permission: "stock.view" },
+      { label: "Stock Register", href: "/stock-register", permission: "stock.view" },
       { label: "Batches", href: "/batches", permission: "batches.view" },
       { label: "Expiry List", href: "/expiry", permission: "expiry.view" },
       {
@@ -61,15 +67,31 @@ export const sidebarMenu = [
     children: [
       // { label: "Journal Entries", href: "/journal-entries", permission: "accounting.view" },
       { label: "Accounts", href: "/accounts", permission: "accounting.view" },
+      { label: "Opening Balances", href: "/opening-balances", permission: "accounting.view" },
       { label: "Parties", href: "/party-ledgers", permission: "accounting.view" },
       // { label: "Party Ledgers", href: "/parties", permission: "accounting.view" },
       { label: "Trial Balance", href: "/trial-balance", permission: "accounting.view" },
       { label: "Profit & Loss", href: "/profit-loss", permission: "accounting.view" },
-      {
-        label: "Balance Sheet",
-        href: "/balance-sheet",
-        permission: "accounting.view",
-      },
+      { label: "Balance Sheet", href: "/balance-sheet", permission: "accounting.view" },
+    ],
+  },
+
+  {
+    label: "Vouchers",
+    base: "vouchers",
+    icon: FileText,
+    permission: "accounting.view",
+    children: [
+      { label: "All Vouchers", href: "/all", permission: "accounting.view" },
+      { label: "Payment Vouchers", href: "/payment", permission: "accounting.view" },
+      { label: "Receipt Vouchers", href: "/receipt", permission: "accounting.view" },
+      { label: "Journal Vouchers", href: "/journal", permission: "accounting.view" },
+      { label: "Contra Vouchers", href: "/contra", permission: "accounting.view" },
+      { label: "Purchase Vouchers", href: "/purchase", permission: "accounting.view" },
+      { label: "Sales Vouchers", href: "/sales", permission: "accounting.view" },
+      { label: "Debit Notes", href: "/debit-note", permission: "accounting.view" },
+      { label: "Credit Notes", href: "/credit-note", permission: "accounting.view" },
+      { label: "Opening Balance", href: "/opening-balance", permission: "accounting.view" },
     ],
   },
 
@@ -152,11 +174,12 @@ export const sidebarMenu = [
     label: "Settings",
     base: "settings",
     icon: Settings,
-    href: "/",
     permission: "settings.manage",
     children: [
       { label: "Dictionaries", href: "/dictionaries", permission: "settings.manage" },
       { label: "System Settings", href: "/system-settings", permission: "settings.manage" },
+      { label: "Margin Settings", href: "/margin-settings", permission: "settings.manage" },
+      { label: "Fiscal Years", href: "/fiscal-years", permission: "settings.manage" },
     ],
   },
 ];

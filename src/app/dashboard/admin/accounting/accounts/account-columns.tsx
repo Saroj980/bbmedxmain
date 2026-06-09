@@ -1,6 +1,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import type { Account } from "@/types/account";
-import { ChevronDown, ChevronRight, Pencil, Plus } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronRight, Pencil, Plus } from "lucide-react";
+import Link from "next/link";
 import { Tag } from "antd";
 import { formatNepaliCurrency } from "@/utils/formatNepaliCurrency";
 
@@ -99,6 +100,14 @@ export const treeAccountColumns = (
               <Pencil size={16} />
             </button>
           )}
+
+          <Link
+            href={`/dashboard/admin/accounting/accounts/${acc.id}/ledger`}
+            className="text-indigo-600"
+            title="View Ledger"
+          >
+            <BookOpen size={16} />
+          </Link>
         </div>
       );
     },

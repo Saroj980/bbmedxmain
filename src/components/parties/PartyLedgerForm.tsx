@@ -14,6 +14,7 @@ export default function PartyLedgerForm({
   onClose,
   refresh,
   editData,
+  defaultIsSupplier = false,
 }: any) {
   const [loading, setLoading] = useState(false);
 
@@ -26,6 +27,7 @@ export default function PartyLedgerForm({
     address: "",
     opening_balance: 0,
     opening_balance_type: "receivable",
+    is_active: true,
   });
 
   /* ---------------- Load Edit Data ---------------- */
@@ -43,6 +45,7 @@ export default function PartyLedgerForm({
           address: p.address ?? "",
           opening_balance: p.opening_balance ?? 0,
           opening_balance_type: p.opening_balance_type ?? "receivable",
+          is_active: p.is_active ?? true,
         });
       });
     }
@@ -50,13 +53,14 @@ export default function PartyLedgerForm({
     if (open && !editData) {
       setForm({
         name: "",
-        is_supplier: false,
-        is_customer: false,
+        is_supplier: defaultIsSupplier,
+        is_customer: !defaultIsSupplier,
         phone: "",
         email: "",
         address: "",
         opening_balance: 0,
-        opening_balance_type: "receivable",
+        opening_balance_type: defaultIsSupplier ? "payable" : "receivable",
+        is_active: true,
       });
     }
   }, [open, editData]);
@@ -92,6 +96,7 @@ export default function PartyLedgerForm({
       address: form.address,
       opening_balance: form.opening_balance,
       opening_balance_type: form.opening_balance_type,
+      is_active: form.is_active,
     };
 
     try {
@@ -158,31 +163,63 @@ export default function PartyLedgerForm({
             />
           </div>
 
-          {/* Party Type */}
-          <div>
-            <label className="text-sm font-medium text-gray-700">
-              Party Type
-            </label>
-
-            <div className="flex gap-6 mt-2">
-              <Checkbox
-                checked={form.is_supplier}
-                onChange={(e) =>
-                  setForm({ ...form, is_supplier: e.target.checked })
-                }
-              >
-                Supplier
-              </Checkbox>
-
-              <Checkbox
-                checked={form.is_customer}
-                onChange={(e) =>
-                  setForm({ ...form, is_customer: e.target.checked })
-                }
-              >
-                Customer
-              </Checkbox>
+          {/* Party Type & Status */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700">
+                Party Type
+              </label>
+              <div className="flex gap-6 mt-2">
+                <Checkbox
+                  checked={form.is_supplier}
+                  onChange={(e) =>
+                    setForm({ ...form, is_supplier: e.target.checked })
+                  }
+                >
+                  Supplier
+                </Checkbox>
+                <Checkbox
+                  checked={form.is_customer}
+                  onChange={(e) =>
+                    setForm({ ...form, is_customer: e.target.checked })
+                  }
+                >
+                  Customer
+                </Checkbox>
+              </div>
             </div>
+
+            {/* Status Switch */}
+            {editData && (
+              <div>
+                <label className="text-sm font-medium text-gray-700 block">
+                  Status
+                </label>
+                <div className="flex items-center gap-3 mt-2">
+                  <span className={`text-sm ${form.is_active ? 'text-gray-400' : 'text-gray-900 font-medium'}`}>Inactive</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={form.is_active}
+                    onClick={() => setForm({ ...form, is_active: !form.is_active })}
+                    className={`
+                      relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2
+                      ${form.is_active ? 'bg-emerald-600' : 'bg-gray-200'}
+                    `}
+                  >
+                    <span className="sr-only">Toggle active status</span>
+                    <span
+                      aria-hidden="true"
+                      className={`
+                        pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out
+                        ${form.is_active ? 'translate-x-5' : 'translate-x-0'}
+                      `}
+                    />
+                  </button>
+                  <span className={`text-sm ${form.is_active ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>Active</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Contact Details */}
@@ -233,52 +270,9 @@ export default function PartyLedgerForm({
 
           
           {/* Opening Balance */}
-          {/* <div className="border rounded-xl p-4 bg-gray-50 space-y-3">
-            <p className="font-medium text-gray-700">
-              Opening Balance (Optional)
-            </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                type="number"
-                min={0}
-                placeholder="e.g. 50000"
-                value={form.opening_balance}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    opening_balance: Number(e.target.value),
-                  })
-                }
-              />
-
-              <select
-                className="border rounded px-3 py-2"
-                value={form.opening_balance_type}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    opening_balance_type: e.target.value,
-                  })
-                }
-              >
-                <option value="receivable">
-                  Receivable – customer owes you
-                </option>
-                <option value="payable">
-                  Payable – you owe supplier
-                </option>
-              </select>
-            </div>
-
-            <p className="text-xs text-gray-500">
-              System will auto-post this as an opening journal entry.
-            </p>
-          </div> */}
-          {!editData && (
-            <>
-              {/* Opening Balance */}
-              <div className="border rounded-xl p-4 bg-gray-50 space-y-3">
+          {/* Opening Balance */}
+          <div className="border rounded-xl p-4 bg-gray-50 space-y-3">
                 <p className="font-medium text-gray-700">
                   Opening Balance (Optional)
                 </p>
@@ -319,11 +313,9 @@ export default function PartyLedgerForm({
                 <p className="text-xs text-gray-500">
                   System will auto-post this as an opening journal entry.
                 </p>
-              </div>
-            </>
-          )}
 
-        </div>
+            </div>
+          </div>
 
         {/* Footer */}
         <div className="absolute bottom-0 left-0 right-0 border-t p-4 flex justify-end gap-3 bg-white">

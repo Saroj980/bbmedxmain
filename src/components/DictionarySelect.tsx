@@ -4,13 +4,20 @@ import { Select } from "antd";
 import { api } from "@/lib/api";
 import { useEffect, useState } from "react";
 
+interface DictionarySelectProps {
+  categoryId: number;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}
+
 export default function DictionarySelect({
   categoryId,
   value,
   onChange,
   placeholder = "Select value",
-}) {
-  const [items, setItems] = useState([]);
+}: DictionarySelectProps) {
+  const [items, setItems] = useState<any[]>([]);
 
   useEffect(() => {
     if (!categoryId) return;

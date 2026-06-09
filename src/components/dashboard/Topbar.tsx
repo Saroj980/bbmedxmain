@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Menu, Bell, LogOut, User, Settings } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useUserStore } from "@/store/userStore";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +12,7 @@ interface TopbarProps {
 }
 
 export default function Topbar({ onMenuClick, collapsed }: TopbarProps) {
+  const router = useRouter();
   const [openProfile, setOpenProfile] = useState(false);
 
   const user = useUserStore((s) => s.user);
@@ -47,14 +49,14 @@ export default function Topbar({ onMenuClick, collapsed }: TopbarProps) {
       {/* RIGHT SECTION */}
       <div className="flex items-center gap-4">
         {/* Notification (future use) */}
-        <button className="relative p-2 rounded-full hover:bg-gray-100 transition">
+        <button className="relative p-2 rounded-full hover:bg-gray-100 transition cursor-pointer">
           <Bell size={22} className="text-gray-700" />
         </button>
 
         {/* PROFILE DROPDOWN */}
         <div className="relative">
           <button
-            className="flex items-center gap-2 p-2 rounded-full hover:bg-gray-100 transition"
+            className="flex items-center gap-2 p-2 rounded-full hover:bg-gray-100 transition cursor-pointer"
             onClick={() => setOpenProfile(!openProfile)}
           >
             <div className="w-9 h-9 bg-[#009966] text-white flex items-center justify-center rounded-full font-semibold">
@@ -74,21 +76,36 @@ export default function Topbar({ onMenuClick, collapsed }: TopbarProps) {
 
               <ul className="py-2">
                 <li>
-                  <button className="flex w-full px-4 py-2 gap-2 text-gray-700 hover:bg-gray-100">
+                  <button 
+                    className="flex w-full px-4 py-2 gap-2 text-gray-700 hover:bg-gray-100 cursor-pointer"
+                    onClick={() => {
+                      setOpenProfile(false);
+                      router.push("/dashboard/admin/profile");
+                    }}
+                  >
                     <User size={18} /> Profile
                   </button>
                 </li>
 
                 <li>
-                  <button className="flex w-full px-4 py-2 gap-2 text-gray-700 hover:bg-gray-100">
+                  <button 
+                    className="flex w-full px-4 py-2 gap-2 text-gray-700 hover:bg-gray-100 cursor-pointer"
+                    onClick={() => {
+                      setOpenProfile(false);
+                      router.push("/dashboard/admin/settings/system-settings");
+                    }}
+                  >
                     <Settings size={18} /> Settings
                   </button>
                 </li>
 
                 <li>
                   <button
-                    className="flex w-full px-4 py-2 gap-2 text-red-600 hover:bg-red-100"
-                    onClick={logout}
+                    className="flex w-full px-4 py-2 gap-2 text-red-600 hover:bg-red-100 cursor-pointer"
+                    onClick={() => {
+                      logout();
+                      router.push("/login");
+                    }}
                   >
                     <LogOut size={18} /> Logout
                   </button>

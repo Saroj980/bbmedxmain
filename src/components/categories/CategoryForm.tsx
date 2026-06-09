@@ -173,7 +173,20 @@ export default function CategoryForm({
             <Input
               className="mt-1"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setName(val);
+                if (!editData) {
+                  const words = val.trim().split(/\s+/).filter(Boolean);
+                  let generated = '';
+                  if (words.length > 1) {
+                    generated = words.map(w => w[0]).join('').substring(0, 4).toUpperCase();
+                  } else if (words.length === 1) {
+                    generated = words[0].substring(0, 3).toUpperCase();
+                  }
+                  setCode(generated);
+                }
+              }}
               placeholder="Category name"
             />
           </div>

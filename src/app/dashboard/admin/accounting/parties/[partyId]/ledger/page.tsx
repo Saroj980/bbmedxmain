@@ -9,6 +9,8 @@ import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { formatNepaliCurrency } from "@/utils/formatNepaliCurrency";
+import FiscalYearSelect from "@/components/common/FiscalYearSelect";
+import { Printer } from "lucide-react";
 
 type LedgerRow = {
   date: string;
@@ -29,13 +31,14 @@ export default function PartyLedgerPage() {
 
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [fiscalYearId, setFiscalYearId] = useState<string | number | null>(null);
 
-  const loadLedger = async () => {
+  const loadLedger = async (fyId = fiscalYearId) => {
     setLoading(true);
     try {
       console.log("Fetching ledger for party ID:", partyId);
       const res = await api.get(`/parties/${partyId}/ledger`, {
-        params: { from, to },
+        params: { from, to, fiscal_year_id: fyId },
       });
 
       setParty(res.data.party);
@@ -44,6 +47,18 @@ export default function PartyLedgerPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFiscalYearChange = (id: any) => {
+    setFiscalYearId(id);
+    setFrom("");
+    setTo("");
+    loadLedger(id);
+  };
+
+  const handlePrint = () => {
+    const url = `/dashboard/admin/accounting/parties/${partyId}/ledger/print?fiscal_year_id=${fiscalYearId || ""}&from=${from}&to=${to}`;
+    window.open(url, "_blank");
   };
 
   useEffect(() => {
@@ -253,28 +268,49 @@ export default function PartyLedgerPage() {
 
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-4 items-end">
+      <div className="flex flex-wrap gap-4 items-end bg-white p-4 border rounded-xl shadow-sm">
+        <div className="w-full md:w-64">
+           <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Fiscal Year</label>
+           <FiscalYearSelect 
+             value={fiscalYearId} 
+             onChange={handleFiscalYearChange}
+           />
+        </div>
+
         <div>
-          <label className="text-xs text-gray-600">From Date</label>
+          <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">From Date</label>
           <Input
             type="date"
             value={from}
-            onChange={(e) => setFrom(e.target.value)}
+            onChange={(e) => {
+                setFrom(e.target.value);
+                setFiscalYearId(null);
+            }}
           />
         </div>
 
         <div>
-          <label className="text-xs text-gray-600">To Date</label>
+          <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">To Date</label>
           <Input
             type="date"
             value={to}
-            onChange={(e) => setTo(e.target.value)}
+            onChange={(e) => {
+                setTo(e.target.value);
+                setFiscalYearId(null);
+            }}
           />
         </div>
 
-        <Button className="bg-[#009966] text-white" onClick={loadLedger}>
-          Apply Filter
-        </Button>
+        <div className="flex gap-2">
+            <Button className="bg-[#009966] hover:bg-[#007a52] text-white" onClick={() => loadLedger()} disabled={loading}>
+              {loading ? "Loading..." : "Apply Filter"}
+            </Button>
+
+            <Button variant="outline" className="border-gray-300 hover:bg-gray-50" onClick={handlePrint}>
+              <Printer className="w-4 h-4 mr-2" />
+              Print Ledger
+            </Button>
+        </div>
       </div>
 
       {/* Ledger Table */}

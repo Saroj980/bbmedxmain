@@ -1,15 +1,15 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import type { Category } from "@/types/category";
-import { ChevronRight, ChevronDown, Pencil, Trash2, Plus } from "lucide-react";
-import { Tag } from "antd";
-
+import { ChevronRight, ChevronDown, Pencil, Trash2, Plus, Box } from "lucide-react";
+import { Tag, Tooltip, Popconfirm } from "antd";
 
 export const treeCategoryColumns = (
   toggleRow: (id: number) => void,
   expanded: Record<number, boolean>,
   onAddChild: (c: Category) => void,
   onEdit: (c: Category) => void,
-  onDelete: (c: Category) => void
+  onDelete: (c: Category) => void,
+  onViewProducts: (c: Category) => void
 ): ColumnDef<Category>[] => [
   {
     accessorKey: "name",
@@ -46,25 +46,37 @@ export const treeCategoryColumns = (
     cell: ({ row }) => {
       const cat = row.original;
 
-      console.log(cat);
-
       return (
         <div
           className="flex items-center gap-1"
           style={{ paddingLeft: cat.depth! * 20 }}
         >
          <Tag
-            // color="var(--primary)"
             color={cat.is_active ? "var(--primary)" : "text-danger"}
-
             className="uppercase font-medium tracking-wide"
           >
             {cat.code}
           </Tag>
-
         </div>
       );
     },
+  },
+  
+  {
+    accessorKey: "products_count",
+    header: "Products",
+    cell: ({ row }) => {
+      const count = row.original.products_count || 0;
+      return (
+        <button 
+          onClick={() => onViewProducts(row.original)}
+          className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors border border-gray-200 hover:border-emerald-200 cursor-pointer"
+        >
+          <Box size={14} />
+          {count} {count === 1 ? 'Product' : 'Products'}
+        </button>
+      );
+    }
   },
 
   {
@@ -95,26 +107,32 @@ export const treeCategoryColumns = (
 
       return (
         <div className="flex items-center gap-3">
-          <button
-            className="text-green-600 hover:text-green-800"
-            onClick={() => onAddChild(cat)}
-          >
-            <Plus size={16} />
-          </button>
+          <Tooltip title="Add Subcategory">
+            <button
+              className="text-green-600 hover:text-green-800 cursor-pointer"
+              onClick={() => onAddChild(cat)}
+            >
+              <Plus size={16} />
+            </button>
+          </Tooltip>
 
-          <button
-            className="text-blue-600 hover:text-blue-800"
-            onClick={() => onEdit(cat)}
-          >
-            <Pencil size={16} />
-          </button>
+          <Tooltip title="Edit Category">
+            <button
+              className="text-blue-600 hover:text-blue-800 cursor-pointer"
+              onClick={() => onEdit(cat)}
+            >
+              <Pencil size={16} />
+            </button>
+          </Tooltip>
 
-          <button
-            className="text-red-600 hover:text-red-800"
-            onClick={() => onDelete(cat)}
-          >
-            <Trash2 size={16} />
-          </button>
+          <Tooltip title="Delete Category">
+            <button 
+              className="text-red-600 hover:text-red-800 cursor-pointer"
+              onClick={() => onDelete(cat)}
+            >
+              <Trash2 size={16} />
+            </button>
+          </Tooltip>
         </div>
       );
     },

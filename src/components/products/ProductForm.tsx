@@ -13,8 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import { generateId } from "@/utils/utils";
 
-export default function ProductFormContent({ editData, refresh, onClose }: any) {
+export default function ProductFormContent({ editData, refresh, onClose, isQuickAdd = false }: any) {
   const [name, setName] = useState(editData?.name ?? "");
   const [sku, setSku] = useState(editData?.sku ?? "");
   const [categoryId, setCategoryId] = useState<number | null>(
@@ -55,16 +56,8 @@ export default function ProductFormContent({ editData, refresh, onClose }: any) 
 
     setDynamicFields(meta);
 
-
-    // unit levels
-    setUnits(editData.unit_levels ?? []);
-
-    // opening stock
-    setOpeningStock(editData.opening_stock ?? []);
-
     // MAP product_units → unit_levels
-    setUnits(
-      Array.isArray(editData.product_units)
+    const levels = Array.isArray(editData.product_units)
         ? editData.product_units
             .sort((a: any, b: any) => a.level - b.level)
             .map((u: any) => ({
@@ -73,14 +66,24 @@ export default function ProductFormContent({ editData, refresh, onClose }: any) 
               unit_id: u.unit_id,
               conversion_factor: u.conversion_factor,
             }))
-        : []
-    );
+        : [];
+
+    // Prepend level 1 if not present (since it's on the product level)
+    if (!levels.find((l: any) => l.level === 1) && editData.unit_id) {
+      levels.unshift({
+        level: 1,
+        unit_id: editData.unit_id,
+        conversion_factor: 1,
+      });
+    }
+
+    setUnits(levels);
 
      // MAP batches → opening_stock
     setOpeningStock(
       Array.isArray(editData.batches)
         ? editData.batches.map((b: any) => ({
-            id: crypto.randomUUID(), // UI-only key
+            id: generateId(), // UI-only key
             location_id:
               b.stock_movements?.[0]?.location_id ?? null,
             batch_no: b.batch_no,
@@ -234,10 +237,12 @@ export default function ProductFormContent({ editData, refresh, onClose }: any) 
         />
       </section>
 
-      <OpeningStockSection
-        value={openingStock}
-        onChange={setOpeningStock}
-      />
+      {!isQuickAdd && (
+        <OpeningStockSection
+          value={openingStock}
+          onChange={setOpeningStock}
+        />
+      )}
 
 
       {/* ---------------- Footer ---------------- */}

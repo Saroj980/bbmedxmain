@@ -8,4 +8,5 @@ export interface Category {
   children: Category[];
   depth?: number;     // <-- for tree indentation
   hasChildren?: boolean;
+  products_count?: number;
 }

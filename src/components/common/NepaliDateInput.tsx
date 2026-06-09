@@ -18,7 +18,7 @@ export default function NepaliDateInput({
   useEffect(() => {
     if (!inputRef.current) return;
 
-    @ts-ignore (library is global)
+    // @ts-ignore (library is global)
     inputRef.current.nepaliDatePicker({
       dateFormat: "YYYY-MM-DD",
       closeOnDateSelect: true,
@@ -34,8 +34,7 @@ export default function NepaliDateInput({
       type="text"
       defaultValue={value}
       placeholder={placeholder}
-      className="w-full border rounded-md px-3 py-2 text-sm
-        focus:outline-none focus:ring-2 focus:ring-emerald-500"
+      className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
     />
   );
 }

@@ -1,280 +1,185 @@
 "use client";
 
-import {
-  Package,
-  ShoppingCart,
-  AlertTriangle,
-  Users,
-  Truck,
-  FileBarChart,
-  Activity,
-  DollarSign,
-  CalendarDays,
-  BarChart3,
-  TrendingUp,
-  ArrowUpRight,
-  ArrowDownRight,
-  LucideIcon
+import { useState, useEffect } from "react";
+import { 
+  Package, 
+  ShoppingCart, 
+  Users, 
+  TrendingUp, 
+  ArrowUpRight, 
+  Calendar,
+  LayoutGrid,
+  FileText,
+  Settings,
+  Activity
 } from "lucide-react";
 
-import NprIcon from "@/components/icons/NprIcon";
-import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
+import StatsCard from "@/components/dashboard/StatsCard";
+import InventoryAlerts from "@/components/dashboard/InventoryAlerts";
+import FinancialOverview from "@/components/dashboard/FinancialOverview";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+
+import NepaliDateHeader from "@/components/dashboard/NepaliDateHeader";
+import PerformanceMatrix from "@/components/dashboard/PerformanceMatrix";
+import FinancialTrend from "@/components/dashboard/FinancialTrend";
+import MonthlyComparisonMatrix from "@/components/dashboard/MonthlyComparisonMatrix";
+import RecentInvoices from "@/components/dashboard/RecentInvoices";
+import { RupeeIcon } from "@/components/icons/RupeeIcon";
+import { api } from "@/lib/api";
 
 export default function AdminDashboard() {
+  const [kpis, setKpis] = useState({
+    netRevenue: 0,
+    stockWorth: 0,
+    avgMargin: 0,
+    receivables: 0
+  });
+
+  const fetchKpis = async () => {
+    try {
+      const response = await api.get("/dashboard/dashboard-kpis");
+      setKpis(response.data);
+    } catch (error) {
+      console.error("Error fetching KPIs:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchKpis();
+  }, []);
+
+  const formatLargeNumber = (num: number) => {
+    if (num >= 100000) return `${(num / 100000).toFixed(2)}L`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
+    return num.toLocaleString();
+  };
   return (
-    // <div className="container mx-auto px-4 py-4">
-      <div className="space-y-8 animate-fadeIn">
-
-        {/* PAGE HEADER */}
-        <header className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-heading font-semibold text-[#2F3E46]">
-              Welcome back 👋
-            </h1>
-            <p className="text-gray-500 mt-1">
-              Here’s what’s happening with your inventory & business today.
-            </p>
-          </div>
-
-          <div className="hidden md:flex items-center gap-3">
-            <button className="px-4 py-2 rounded-lg bg-[#009966] text-white font-medium shadow hover:bg-[#008456] transition">
-              + New Sale
-            </button>
-            <button className="px-4 py-2 rounded-lg bg-[#33BBA2] text-white font-medium shadow hover:bg-[#2ca890] transition">
-              + New Purchase
-            </button>
-          </div>
-        </header>
-
-        {/* KPI CARDS */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-
-          <KpiCard
-            icon={Package}
-            title="Total Products"
-            value="1,245"
-            trend="+3.4%"
-            trendUp
-          />
-
-          <KpiCard
-            icon={AlertTriangle}
-            title="Low Stock Items"
-            value="27"
-            highlight="bg-red-100 text-red-700"
-          />
-
-          <KpiCard
-            icon={NprIcon}
-            title="Sales Today"
-            value="रु. 54,200"
-            trend="+12%"
-            trendUp
-          />
-
-          <KpiCard
-            icon={Users}
-            title="Total Customers"
-            value="312"
-            trend="-1.2%"
-            trendUp={false}
-          />
-        </section>
-
-        {/* CHARTS */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ChartCard
-            title="Sales Overview (Last 7 Days)"
-            subtitle="Sales trend movement"
-          />
-
-          <ChartCard
-            title="Purchase Overview (Last 7 Days)"
-            subtitle="Purchase trend movement"
-          />
-        </section>
-
-        {/* ALERTS & QUICK LINKS */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-          {/* Alerts */}
-          <AlertPanel />
-
-          {/* Quick Actions */}
-          <QuickActions />
-        </section>
-      </div>
-    // </div>
-  );
-}
-
-/* -----------------------------------------------------------
-   --- COMPONENTS ---
------------------------------------------------------------ */
-
-function KpiCard({
-  icon: Icon,
-  title,
-  value,
-  trend,
-  trendUp = true,
-  highlight,
-}: {
-  icon: React.ElementType;
-  title: string;
-  value: string;
-  trend?: string;
-  trendUp?: boolean;
-  highlight?: string;
-}) {
-  return (
-    <Card
-      className={`
-        backdrop-blur bg-white/70 shadow-sm border border-gray-200 hover:shadow-md 
-        transition-all p-0 overflow-hidden
-        ${highlight ? highlight : ""}
-      `}
-    >
-      <CardContent className="p-5 flex items-center gap-4">
-        <div className="p-3 rounded-xl bg-gradient-to-br from-[#009966] to-[#33BBA2] text-white shadow-md">
-          <Icon size={26} />
-        </div>
-
-        <div className="flex-1">
-          <p className="text-sm text-gray-500 font-medium">{title}</p>
-          <h3 className="text-2xl font-semibold">{value}</h3>
-        </div>
-
-        {trend && (
-          <div
-            className={`flex items-center text-sm font-semibold ${
-              trendUp ? "text-green-600" : "text-red-600"
-            }`}
-          >
-            {trendUp ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
-            {trend}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-interface ChartCardProps {
-  title: string;
-  subtitle?: string;
-}
-
-function ChartCard({ title, subtitle }: ChartCardProps) {
-  return (
-    <Card className="shadow-sm border border-gray-200 backdrop-blur bg-white/70">
-      <CardHeader>
-        <CardTitle className="font-heading text-lg">{title}</CardTitle>
-        <p className="text-gray-400 text-sm">{subtitle}</p>
-      </CardHeader>
-      <CardContent>
-        <div className="h-48 border border-dashed rounded-lg flex items-center justify-center text-gray-400 text-sm">
-          Chart coming soon...
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function AlertPanel() {
-  return (
-    <Card className="shadow-sm border border-gray-200 bg-white/80 backdrop-blur">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg font-heading">
-          <AlertTriangle size={20} className="text-red-500" />
-          Alerts & Notifications
-        </CardTitle>
-      </CardHeader>
-
-      <CardContent className="space-y-3">
-
-        {/* Low stock alert */}
-        <div className="p-3 rounded-lg bg-red-50 border-l-4 border-red-400">
-          <p className="text-sm text-red-800 font-semibold">Low Stock</p>
-          <p className="text-xs text-red-700">
-            27 items need urgent restocking.
-          </p>
-        </div>
-
-        {/* Expiry alert */}
-        <div className="p-3 rounded-lg bg-yellow-50 border-l-4 border-yellow-400">
-          <p className="text-sm text-yellow-700 font-semibold">Expiring Soon</p>
-          <p className="text-xs text-yellow-600">
-            12 medicines are nearing expiry.
-          </p>
-        </div>
-
-        {/* Due payment */}
-        <div className="p-3 rounded-lg bg-blue-50 border-l-4 border-blue-400">
-          <p className="text-sm text-blue-800 font-semibold">Pending Payments</p>
-          <p className="text-xs text-blue-700">
-            ₹ 32,900 pending from customers.
-          </p>
-        </div>
-
-      </CardContent>
-    </Card>
-  );
-}
-
-function QuickActions() {
-  const actions = [
-    {
-      label: "Create Product",
-      icon: Package,
-      href: "/products/create",
-    },
-    {
-      label: "Add Sale",
-      icon: ShoppingCart,
-      href: "/sales/add",
-    },
-    {
-      label: "Add Purchase",
-      icon: Truck,
-      href: "/purchases/add",
-    },
-    {
-      label: "Stock Overview",
-      icon: BarChart3,
-      href: "/stock",
-    },
-    {
-      label: "Expiry Returns",
-      icon: CalendarDays,
-      href: "/expiry",
-    },
-    {
-      label: "Accounting Dashboard",
-      icon: FileBarChart,
-      href: "/accounting",
-    },
-  ];
-
-  return (
-    <Card className="shadow-sm border bg-white/80 backdrop-blur">
-      <CardHeader>
-        <CardTitle className="font-heading text-lg">Quick Actions</CardTitle>
-      </CardHeader>
-
-      <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {actions.map((action) => (
-          <a
-            key={action.label}
-            href={action.href}
-            className="p-4 rounded-xl bg-white shadow hover:shadow-lg flex items-center gap-3 border hover:bg-[#E9FFF5] transition"
-          >
-            <div className="p-3 bg-[#33BBA2] text-white rounded-lg shadow">
-              <action.icon size={22} />
+    <div className="flex flex-col gap-6 animate-in fade-in duration-1000">
+      
+      {/* --- FLIGHT DECK HEADER --- */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-slate-100i">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-200">
+              <LayoutGrid size={24} />
             </div>
-            <span className="font-medium text-[#2F3E46]">{action.label}</span>
-          </a>
-        ))}
-      </CardContent>
-    </Card>
+             <h1 className="text-3xl font-black text-slate-900 tracking-tighter">
+              ERP <span className="text-emerald-600">Dashboard</span>
+            </h1>
+          </div>
+          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest ml-11">
+            Business Intelligence • <span className="text-emerald-500">My Pharmacy v2.1</span>
+          </p>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-4">
+          <NepaliDateHeader />
+          <div className="h-8 w-px bg-slate-200 hidden md:block" />
+          <Button className="bg-slate-900 hover:bg-black text-white px-6 shadow-xl shadow-slate-200 rounded-xl transition-all hover:scale-105 active:scale-95">
+            <ShoppingCart className="mr-2 h-4 w-4" /> New Sale
+          </Button>
+        </div>
+      </div>
+
+      {/* --- QUICK OPERATIONS HUB --- */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+        <QuickButton icon={Package} label="Products" href="/dashboard/admin/products" color="bg-emerald-50 text-emerald-600" />
+        <QuickButton icon={Users} label="Parties" href="/dashboard/admin/accounting/party-ledgers" color="bg-blue-50 text-blue-600" />
+        <QuickButton icon={FileText} label="Billing" href="/dashboard/admin/sales/create" color="bg-indigo-50 text-indigo-600" />
+        <QuickButton icon={ShoppingCart} label="Purchase" href="/dashboard/admin/purchases/create" color="bg-amber-50 text-amber-600" />
+        <QuickButton icon={TrendingUp} label="Vouchers" href="/dashboard/admin/vouchers/all" color="bg-rose-50 text-rose-600" />
+        <QuickButton icon={Settings} label="Config" href="/dashboard/admin/settings" color="bg-slate-100 text-slate-600" />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 mt-4">
+        
+        {/* --- PRIMARY INTEL COLUMN (LEFT 8) --- */}
+        <div className="xl:col-span-8 flex flex-col gap-8">
+          
+          {/* Executive KPI Ribbon */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatsCard 
+              compact
+              title="Net Revenue (LTR)"
+              value={`रु. ${formatLargeNumber(kpis.netRevenue)}`}
+              icon={RupeeIcon}
+              trend="+12.5%"
+              trendType="up"
+              description="Month-to-Date"
+              color="emerald"
+            />
+            <StatsCard 
+              compact
+              title="Stock Worth"
+              value={`रु. ${formatLargeNumber(kpis.stockWorth)}`}
+              icon={Package}
+              trend="+2.4%"
+              trendType="up"
+              description="Total Valuation"
+              color="blue"
+            />
+            <StatsCard 
+              compact
+              title="Avg. Margin"
+              value={`${kpis.avgMargin.toFixed(1)}%`}
+              icon={TrendingUp}
+              trend="+0.6%"
+              trendType="up"
+              description="Gross Profitability"
+              color="orange"
+            />
+            <StatsCard 
+              compact
+              title="Receivables"
+              value={`रु. ${formatLargeNumber(kpis.receivables)}`}
+              icon={FileText}
+              trend="Check Risks"
+              trendType="neutral"
+              description="Customer Credit"
+              color="slate"
+            />
+          </div>
+
+          {/* Business Intelligence Hub (Monthly Comp & Distribution) */}
+          <div className="grid grid-cols-1 gap-8">
+            <FinancialTrend />
+            <MonthlyComparisonMatrix />
+            {/* <PerformanceMatrix /> */}
+          </div>
+
+          {/* Transaction Activity Feed */}
+          <RecentInvoices />
+        </div>
+
+
+        {/* --- SECONDARY OPS COLUMN (RIGHT 4) --- */}
+        <div className="xl:col-span-4 flex flex-col gap-8">
+          <InventoryAlerts />
+          <FinancialOverview />
+
+
+          
+        </div>
+
+      </div>
+
+    </div>
+
   );
 }
+
+function QuickButton({ icon: Icon, label, href, color }: { icon: any, label: string, href: string, color: string }) {
+  return (
+    <a 
+      href={href}
+      className="group flex flex-col items-center justify-center p-4 bg-white rounded-2xl hover:shadow-extra-soft transition-all duration-300 border border-slate-50 hover:border-emerald-100"
+    >
+      <div className={`p-3 rounded-xl ${color} group-hover:scale-110 transition-transform mb-2`}>
+        <Icon size={20} />
+      </div>
+      <span className="text-xs font-bold text-slate-600 group-hover:text-slate-900">{label}</span>
+    </a>
+  );
+}
+

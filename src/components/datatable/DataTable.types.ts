@@ -9,13 +9,16 @@ export type PaginationState = {
 };
 
 export interface DataTableProps<T> {
-  title: string;
+  title?: string;
   columns: ColumnDef<T, any>[];
   data: T[];
   loading?: boolean;
+  disableSearch?: boolean;
   breadcrumbs?: string[]; 
   pageSize?: number;
   disablePagination?: boolean;
   emptyMessage?: null | string;
   pagination?: PaginationState; 
+  getRowClassName?: (row: T) => string | undefined;
+  expandedRowRenderer?: (row: T, toggleCollapse: () => void) => React.ReactNode;
 }

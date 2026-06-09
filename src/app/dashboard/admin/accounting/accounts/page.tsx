@@ -1,119 +1,184 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { api } from "@/lib/api";
-import { DataTable } from "@/components/datatable/DataTable";
-import { flattenAccounts, flattenCategories } from "@/lib/tree-flatten";
-import { treeAccountColumns } from "./account-columns";
-import type { Account } from "@/types/account";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Download, Plus, Search } from "lucide-react";
+import { Select } from "antd";
 import AccountForm from "./AccountFormDrawer";
+import { buildTree } from "./utils/treeHelpers";
+import TopKPIs from "./components/TopKPIs";
+import TreeTab from "./components/TreeTab";
+import FinancialViewTab from "./components/FinancialViewTab";
+import BalancesTab from "./components/BalancesTab";
+import ActivityTab from "./components/ActivityTab";
 
-export default function AccountsPage() {
-  const [rawTree, setRawTree] = useState<Account[]>([]);
-  const [flat, setFlat] = useState<Account[]>([]);
-  const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+const { Option } = Select;
+
+export default function ChartOfAccountsPage() {
   const [loading, setLoading] = useState(true);
+  const [fiscalYears, setFiscalYears] = useState<any[]>([]);
+  const [selectedFyId, setSelectedFyId] = useState<number | null>(null);
+  
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [fiscalYear, setFiscalYear] = useState<any>(null);
 
   const [openForm, setOpenForm] = useState(false);
-  const [editAccount, setEditAccount] = useState<Account | null>(null);
-  const [parentForNew, setParentForNew] = useState<Account | null>(null);
+  const [editAccount, setEditAccount] = useState<any>(null);
+  const [parentForNew, setParentForNew] = useState<any>(null);
 
-  const loadAccounts = async () => {
+  const [activeTab, setActiveTab] = useState("tree");
+
+  const loadFiscalYears = async () => {
+    try {
+      const res = await api.get("/fiscal-years");
+      setFiscalYears(res.data);
+      const active = res.data.find((f: any) => f.is_active);
+      if (active) setSelectedFyId(active.id);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const loadData = async (fyId: number | null) => {
     setLoading(true);
     try {
-      const res = await api.get("/account/tree");
-      const tree = res.data;
-
-      const expandAll: Record<number, boolean> = {};
-      const markExpanded = (list: Account[]) => {
-        list.forEach(a => {
-          if (a.children?.length) {
-            expandAll[a.id] = true;
-            markExpanded(a.children);
-          }
-        });
-      };
-
-      markExpanded(tree);
-
-      setExpanded(expandAll);
-      setRawTree(tree);
-      setFlat(flattenAccounts(tree));
+      const params = fyId ? { fiscal_year_id: fyId } : {};
+      const res = await api.get("/account/coa-data", { params });
+      setAccounts(res.data.accounts);
+      setFiscalYear(res.data.fiscal_year);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadAccounts();
+    loadFiscalYears();
   }, []);
 
-  const toggleRow = (id: number) =>
-    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+  useEffect(() => {
+    if (selectedFyId) {
+      loadData(selectedFyId);
+    }
+  }, [selectedFyId]);
 
-  const visibleRows = flat;
+  const tree = useMemo(() => buildTree(accounts), [accounts]);
 
+  const handleAddChild = (parentAcc: any) => {
+    setEditAccount(null);
+    setParentForNew(parentAcc);
+    setOpenForm(true);
+  };
 
-  const columns = useMemo(
-    () =>
-      treeAccountColumns(
-        toggleRow,
-        expanded,
-        (a) => {
-          setParentForNew(a);
-          setEditAccount(null);
-          setOpenForm(true);
-        },
-        (a) => {
-          setEditAccount(a);
-          setOpenForm(true);
-        }
-      ),
-    [expanded]
-  );
+  const handleEdit = (acc: any) => {
+    setEditAccount(acc);
+    setParentForNew(null);
+    setOpenForm(true);
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <Breadcrumb
-          items={[
-            { label: "Dashboard", href: "/dashboard/admin" },
-            { label: "Accounting", href: "/dashboard/admin/accounting" },
-            { label: "Accounts" },
-          ]}
-        />
+    <div className="space-y-4 pb-10">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <Breadcrumb
+            items={[
+              { label: "Dashboard", href: "/dashboard/admin" },
+              { label: "Accounting", href: "/dashboard/admin/accounting" },
+              { label: "Accounts" },
+            ]}
+          />
+          <h1 className="text-2xl font-bold text-gray-800 mt-1">Chart of Accounts</h1>
+        </div>
 
-        <Button
-          className="bg-[#009966] text-white"
-          onClick={() => {
-            setEditAccount(null);
-            setParentForNew(null);
-            setOpenForm(true);
-          }}
-        >
-          <Plus size={16} className="mr-2" />
-          Add Account
-        </Button>
+        <div className="flex items-center gap-3">
+          <Select
+            className="w-40"
+            value={selectedFyId}
+            onChange={setSelectedFyId}
+            placeholder="Fiscal Year"
+          >
+            {fiscalYears.map(fy => (
+              <Option key={fy.id} value={fy.id}>
+                {fy.name}
+              </Option>
+            ))}
+          </Select>
+
+          <Button variant="outline" className="h-9 px-3 border-gray-200">
+            <Download size={16} className="mr-2" />
+            Export
+          </Button>
+
+          <Button
+            className="bg-[#009966] hover:bg-[#008855] text-white h-9 px-4"
+            onClick={() => {
+              setEditAccount(null);
+              setParentForNew(null);
+              setOpenForm(true);
+            }}
+          >
+            <Plus size={16} className="mr-2" />
+            Add Account
+          </Button>
+        </div>
       </div>
 
-      <DataTable
-        title="Chart of Accounts"
-        columns={columns}
-        data={visibleRows}
-        loading={loading}
-        disablePagination
-        pageSize={10000}
-        emptyMessage="No accounts found"
-        
-      />
+      {/* KPI Section */}
+      <TopKPIs accounts={accounts} fiscalYear={fiscalYear} />
+
+      {/* Tabs */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-1">
+        <div className="flex items-center border-b border-gray-100 overflow-x-auto">
+          {["tree", "financial", "balances", "activity"].map(tab => (
+            <button
+              key={tab}
+              className={`px-6 py-3 font-medium text-sm transition-colors relative whitespace-nowrap ${
+                activeTab === tab ? "text-[#009966]" : "text-gray-500 hover:text-gray-800"
+              }`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab === "tree" && "Tree View"}
+              {tab === "financial" && "Financial View"}
+              {tab === "balances" && "Balances"}
+              {tab === "activity" && "Activity"}
+              
+              {activeTab === tab && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#009966]" />
+              )}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-0">
+          {activeTab === "tree" && (
+            <TreeTab 
+              accounts={accounts} 
+              tree={tree} 
+              loading={loading}
+              onAddChild={handleAddChild}
+              onEdit={handleEdit}
+            />
+          )}
+          {activeTab === "financial" && (
+            <FinancialViewTab accounts={accounts} loading={loading} />
+          )}
+          {activeTab === "balances" && (
+            <BalancesTab accounts={accounts} loading={loading} />
+          )}
+          {activeTab === "activity" && (
+            <ActivityTab fiscalYear={fiscalYear} />
+          )}
+        </div>
+      </div>
 
       <AccountForm
         open={openForm}
         onClose={() => setOpenForm(false)}
-        refresh={loadAccounts}
+        refresh={() => loadData(selectedFyId)}
         account={editAccount}
         parentForNew={parentForNew || undefined}
       />

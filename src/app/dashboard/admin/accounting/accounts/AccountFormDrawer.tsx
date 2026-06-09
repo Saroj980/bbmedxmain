@@ -170,11 +170,11 @@ export default function AccountFormDrawer({
             </label>
             <Select
               className="w-full"
-              value={form.category}
+              value={form.category || undefined}
               placeholder="Select Category (optional)"
-              onChange={v => setForm({ ...form, category: v })}
+              allowClear
+              onChange={v => setForm({ ...form, category: v || "" })}
               options={[
-                // { value: "", label: "Select Category" },
                 { value: "cash", label: "Cash" },
                 { value: "bank", label: "Bank" },
                 { value: "wallet", label: "Wallet" },

@@ -36,6 +36,19 @@ export default function PurchasePaymentDrawer({
     remarks: "",
   });
 
+  useEffect(() => {
+    if (open) {
+      setForm({
+        amount: outstandingAmount,
+        method: "bank",
+        account_id: null,
+        payment_date: dayjs(),
+        reference: "",
+        remarks: "",
+      });
+    }
+  }, [open, outstandingAmount]);
+
   /* ---------------- Load payment accounts ---------------- */
   useEffect(() => {
   if (!form.account_id) {
@@ -159,7 +172,8 @@ export default function PurchasePaymentDrawer({
             <Input
               type="number"
               className="mt-1 text-right"
-              value={form.amount}
+              placeholder={outstandingAmount?.toString() || "0"}
+              value={form.amount ?? ""}
               onChange={(e) =>
                 setForm({ ...form, amount: Number(e.target.value) })
               }
@@ -241,7 +255,7 @@ export default function PurchasePaymentDrawer({
             <Input
               className="mt-1"
               placeholder="Cheque / Txn no."
-              value={form.reference}
+              value={form.reference ?? ""}
               onChange={(e) =>
                 setForm({ ...form, reference: e.target.value })
               }
@@ -256,7 +270,7 @@ export default function PurchasePaymentDrawer({
             <Input
               className="mt-1"
               placeholder="Optional notes"
-              value={form.remarks}
+              value={form.remarks ?? ""}
               onChange={(e) =>
                 setForm({ ...form, remarks: e.target.value })
               }

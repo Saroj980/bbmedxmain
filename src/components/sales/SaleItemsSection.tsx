@@ -6,6 +6,7 @@ import { Select } from "antd";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Trash2, Plus, Package } from "lucide-react";
+import { formatDate, generateId } from "@/utils/utils";
 import { api } from "@/lib/api";
 import { formatNepaliCurrency } from "@/utils/formatNepaliCurrency";
 import dayjs from "dayjs";
@@ -47,7 +48,7 @@ export default function SaleItemsSection({
     onChange([
       ...value,
       {
-        id: crypto.randomUUID(),
+        id: generateId(),
         product_id: null,
         batch_id: null,
         quantity: 1,

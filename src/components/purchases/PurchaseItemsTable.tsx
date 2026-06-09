@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { generateId } from "@/utils/utils";
 import { DatePicker, Select, Checkbox } from "antd";
 import { Plus, Trash2 } from "lucide-react";
 import dayjs from "dayjs";
@@ -22,7 +23,7 @@ export default function PurchaseItemsSection({
     onChange([
       ...value,
       {
-        id: crypto.randomUUID(),
+        id: generateId(),
         product_id: null,
         batch_no: "",
         expiry_date: null,

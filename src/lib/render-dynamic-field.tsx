@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 
-export function renderDynamicField(def, value, onChange) {
+export function renderDynamicField(def: any, value: any, onChange: any) {
   const label = (
     <label className="text-sm font-medium text-gray-700">
       {def.label}
@@ -68,7 +68,7 @@ export function renderDynamicField(def, value, onChange) {
             onChange={(e) => onChange(e.target.value)}
           >
             <option value="">Select...</option>
-            {def.options?.map((o, i) => (
+            {def.options?.map((o: any, i: number) => (
               <option key={i} value={o}>
                 {o}
               </option>
@@ -82,7 +82,7 @@ export function renderDynamicField(def, value, onChange) {
         <div>
           {label}
           <div className="mt-2 flex flex-wrap gap-4">
-            {def.options?.map((o) => (
+            {def.options?.map((o: any) => (
               <label key={o} className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -105,7 +105,7 @@ export function renderDynamicField(def, value, onChange) {
         <div>
           {label}
           <div className="mt-2 flex gap-4">
-            {def.options?.map((o) => (
+            {def.options?.map((o: any) => (
               <label key={o} className="flex items-center gap-2">
                 <input
                   type="radio"

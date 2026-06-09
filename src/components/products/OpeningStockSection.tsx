@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Trash2, Plus, Warehouse } from "lucide-react";
 import { api } from "@/lib/api";
 import { buildLocationTree, LocationNode } from "@/utils/locationTree";
+import { generateId } from "@/utils/utils";
 
 const VAT_RATE = 0.13;
 const EXPIRY_WARNING_DAYS = 90;
@@ -100,7 +101,7 @@ export default function OpeningStockSection({ value, onChange }: Props) {
     onChange([
       ...value,
       {
-        id: crypto.randomUUID(),
+        id: generateId(),
         location_id: null,
         batch_no: "",
         expiry_date: null,
@@ -176,8 +177,11 @@ export default function OpeningStockSection({ value, onChange }: Props) {
           </p>
         </div>
 
-        <Button variant="outline" size="sm" onClick={addRow}>
-          <Plus size={14} className="mr-1" />
+        <Button
+          onClick={addRow}
+          className="bg-[#009966] hover:bg-[#008855] text-white rounded-xl px-4 transition-all font-semibold shadow-sm border-none flex items-center gap-2 h-9"
+        >
+          <Plus size={14} />
           Add Stock
         </Button>
       </div>

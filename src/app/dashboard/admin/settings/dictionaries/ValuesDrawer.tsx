@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
-export default function ValuesDrawer({ open, onClose, category }) {
+export default function ValuesDrawer({ open, onClose, category }: any) {
   const [values, setValues] = useState([]);
   const [loading, setLoading] = useState(false);
   const [newValue, setNewValue] = useState("");
@@ -35,7 +35,7 @@ export default function ValuesDrawer({ open, onClose, category }) {
     loadValues();
   };
 
-  const deleteValue = async (id) => {
+  const deleteValue = async (id: any) => {
     await api.delete(`/dictionary/values/${id}`);
     loadValues();
   };
@@ -44,7 +44,7 @@ export default function ValuesDrawer({ open, onClose, category }) {
     { title: "Value", dataIndex: "value" },
     {
       title: "Actions",
-      render: (_, row) => (
+      render: (_: any, row: any) => (
         <Button danger size="small" onClick={() => deleteValue(row.id)}>
           Delete
         </Button>

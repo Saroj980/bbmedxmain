@@ -7,4 +7,5 @@ export interface Location {
   is_active: boolean;
   children?: Location[];
   hasChildren?: boolean;
+  products_count?: number;
 }

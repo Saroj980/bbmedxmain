@@ -30,23 +30,12 @@ export default function UnitsPage() {
   }, []);
 
   const unitColumns = useMemo(
-    () => columns(setEditUnit, setOpenForm),
+    () => columns(setEditUnit, setOpenForm, loadUnits),
     []
   );
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-
-      {/* Breadcrumb */}
-      {/* <Breadcrumb
-        items={[
-          { label: "Dashboard", href: "/dashboard/admin" },
-          { label: "Products", href: "/dashboard/admin/products" },
-          { label: "Units" },
-        ]}
-      /> */}
-
-      {/* Header */}
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
         <Breadcrumb
           items={[
@@ -57,25 +46,26 @@ export default function UnitsPage() {
         />
 
         <Button
-          className="bg-[#009966] text-white hover:bg-[#008456] rounded-lg"
+          className="bg-[#009966] text-white"
           onClick={() => {
             setEditUnit(null);
             setOpenForm(true);
           }}
         >
-          <Plus size={18} className="mr-2" /> Add Unit
+          <Plus size={16} className="mr-2" /> Add Unit
         </Button>
       </div>
 
-      {/* DataTable with loading */}
       <DataTable
-        title="Units List"
+        title="Units"
         columns={unitColumns}
         data={units}
         loading={loading}
+        pageSize={10000}
+        disablePagination={true}
+        emptyMessage="No records found."
       />
 
-      {/* Drawer Form */}
       <UnitForm
         open={openForm}
         onClose={() => setOpenForm(false)}

@@ -95,28 +95,28 @@ export default function UnitForm({
     <>
       {open && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[90]"
+          className="fixed inset-0 bg-black/30 z-40"
           onClick={onClose}
         />
       )}
 
       <div
         className={`
-          fixed top-0 right-0 h-full w-full sm:w-[420px]
-          bg-white shadow-2xl z-[100]
+          fixed top-0 right-0 h-full w-full sm:w-[480px]
+          bg-white shadow-xl z-50
           transform transition-transform duration-300
           ${open ? "translate-x-0" : "translate-x-full"}
         `}
       >
         {/* HEADER */}
-        <div className="flex items-center justify-between p-5 border-b">
-          <h2 className="text-xl font-semibold text-[#2F3E46] font-heading">
+        <div className="flex items-center justify-between p-5 border-b bg-slate-50/60 backdrop-blur-sm">
+          <h2 className="text-xl font-bold text-[#163A5F] font-heading">
             {editData ? "Edit Unit" : "Add New Unit"}
           </h2>
 
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-200/40 rounded-full transition"
+            className="p-2 hover:bg-gray-200/50 rounded-full transition text-slate-500 hover:text-slate-700"
           >
             <X size={20} />
           </button>
@@ -126,28 +126,28 @@ export default function UnitForm({
         <div className="p-6 space-y-5">
           {/* Unit Name */}
           <div>
-            <label className="text-sm font-medium text-[#2F3E46]">
-              Unit Name <span className="text-red-600">*</span>
+            <label className="text-sm font-semibold text-slate-700">
+              Unit Name <span className="text-red-500">*</span>
             </label>
             <Input
               placeholder="e.g., Tablet, Strip, Box"
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoFocus
-              className="mt-1"
+              className="mt-1 border-slate-200 focus-visible:ring-[#163A5F]"
             />
           </div>
 
           {/* Short Code */}
           <div>
-            <label className="text-sm font-medium text-[#2F3E46]">
+            <label className="text-sm font-semibold text-slate-700">
               Short Code
             </label>
             <Input
               placeholder="TAB, STR, BOX"
               value={shortCode}
               onChange={(e) => setShortCode(e.target.value)}
-              className="mt-1"
+              className="mt-1 border-slate-200 focus-visible:ring-[#163A5F]"
             />
           </div>
 
@@ -156,13 +156,13 @@ export default function UnitForm({
             <Button
               variant="outline"
               onClick={onClose}
-              className="border-gray-300 text-gray-700 hover:bg-gray-100"
+              className="border-gray-300 text-gray-700 hover:bg-gray-50 h-10 px-4 font-semibold"
             >
               Cancel (Esc)
             </Button>
 
             <Button
-              className="bg-[#009966] text-white hover:bg-[#008456]"
+              className="bg-[#163A5F] hover:bg-[#1E4C75] text-white h-10 px-4 font-semibold shadow-sm transition-all"
               onClick={handleSubmit}
               disabled={loading}
             >

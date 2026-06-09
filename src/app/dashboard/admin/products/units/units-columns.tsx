@@ -8,7 +8,8 @@ import { toast } from "sonner";
 
 export const columns = (
   setEditUnit: (u: Unit) => void,
-  setOpenForm: (v: boolean) => void
+  setOpenForm: (v: boolean) => void,
+  refresh: () => Promise<void>
 ): ColumnDef<Unit>[] => [
   {
     id: "serial",
@@ -30,7 +31,7 @@ export const columns = (
     accessorKey: "name",
     header: "Unit Name",
     cell: ({ row }) => (
-      <span className="font-medium text-[#2F3E46]">{row.original.name}</span>
+      <span className="font-semibold text-[#163A5F]">{row.original.name}</span>
     ),
   },
   {
@@ -50,7 +51,7 @@ export const columns = (
         try {
           await api.delete(`/units/${unit.id}`);
           toast.success("Unit deleted");
-          window.location.reload();
+          await refresh();
         } catch {
           toast.error("Failed to delete");
         }

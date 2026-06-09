@@ -13,9 +13,11 @@ interface UserState {
   refreshToken: string | null;
   user: User | null;
   permissions: string[];
+  hydrated: boolean;
 
   setAuth: (token: string, refreshToken: string, user: User | null, permissions: string[]) => void;
   logout: () => void;
+  setHydrated: (val: boolean) => void;
 }
 
 export const useUserStore = create<UserState>()(
@@ -25,6 +27,7 @@ export const useUserStore = create<UserState>()(
       refreshToken: null,
       user: null,
       permissions: [],
+      hydrated: false,
 
       // ------------------------------
       // Save Auth Data
@@ -40,16 +43,26 @@ export const useUserStore = create<UserState>()(
       // ------------------------------
       // Logout
       // ------------------------------
-      logout: () =>
+      logout: () => {
+        // Clear cookies
+        document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+        document.cookie = "role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+
         set({
           token: null,
           refreshToken: null,
           user: null,
           permissions: [],
-        }),
+        });
+      },
+
+      setHydrated: (hydrated) => set({ hydrated }),
     }),
     {
       name: "bbmedx-auth", // LocalStorage Key
+      onRehydrateStorage: (state) => {
+        return () => state.setHydrated(true);
+      },
     }
   )
 );

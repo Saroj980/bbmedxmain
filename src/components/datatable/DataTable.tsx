@@ -6,11 +6,13 @@ import {
   getFilteredRowModel,
   getSortedRowModel,
   getPaginationRowModel,
+  getExpandedRowModel,
   flexRender,
 } from "@tanstack/react-table";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { Empty } from "antd";
 import type { DataTableProps } from "./DataTable.types";
 import { Loader2 } from "lucide-react";
 
@@ -23,6 +25,9 @@ export function DataTable<TData>({
   disablePagination = false,
   emptyMessage = 'No records found.',
   pagination,
+  getRowClassName,
+  expandedRowRenderer,
+  disableSearch = false,
 }: DataTableProps<TData>) {
   const [globalFilter, setGlobalFilter] = useState("");
 
@@ -36,6 +41,7 @@ export function DataTable<TData>({
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
     // getPaginationRowModel: getPaginationRowModel(),
     initialState: {
       pagination: { pageSize: pageSize || 50 }
@@ -51,13 +57,6 @@ export function DataTable<TData>({
     // getSortedRowModel: getSortedRowModel(),
   });
 
-  if (!loading && data.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
-        {emptyMessage ?? "No records found."}
-      </div>
-    );
-  }
 
   return (
     <div className="relative bg-white border shadow-md rounded-xl overflow-hidden">
@@ -71,19 +70,23 @@ export function DataTable<TData>({
       )}
 
       {/* HEADER */}
-      <div className="p-5 border-b flex items-center justify-between bg-[#F8FFFB]">
-        <h2 className="text-xl font-semibold text-[#009966] font-heading">
-          {title}
-        </h2>
+      {(!disableSearch || title) && (
+        <div className="p-4 border-b flex items-center justify-between bg-slate-50/70 backdrop-blur-sm print:hidden">
+          <h2 className="text-lg font-bold text-[#163A5F] font-heading">
+            {title}
+          </h2>
 
-        <Input
-          placeholder="Search..."
-          className="w-56 bg-white"
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          disabled={loading}
-        />
-      </div>
+          {!disableSearch && (
+            <Input
+              placeholder="Search..."
+              className="w-56 bg-white border-slate-200 focus-visible:ring-[#163A5F]"
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              disabled={loading}
+            />
+          )}
+        </div>
+      )}
 
       {/* TABLE */}
       <div className="overflow-x-auto">
@@ -94,7 +97,7 @@ export function DataTable<TData>({
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="text-left px-4 py-3 font-semibold text-gray-700"
+                    className="text-left px-4 py-3 font-semibold text-gray-700 whitespace-nowrap"
                   >
                     {header.isPlaceholder
                       ? null
@@ -106,18 +109,35 @@ export function DataTable<TData>({
           </thead>
 
           <tbody>
-            {!loading &&
+            {!loading && data.length === 0 && (
+              <tr>
+                <td colSpan={columns.length} className="py-16">
+                  <Empty description={emptyMessage || "No data"} />
+                </td>
+              </tr>
+            )}
+            {!loading && data.length > 0 &&
               table.getRowModel().rows.map((row) => (
-                <tr
-                  key={row.id}
-                  className="border-b hover:bg-[#F1FAF6] transition"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-4 py-3">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
+                <React.Fragment key={row.id}>
+                  <tr
+                    className={`border-b transition ${getRowClassName ? getRowClassName(row.original) : 'hover:bg-[#F1FAF6]'}`}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-4 py-3">
+                        {/* We inject toggleCollapse if the cell handles expansion, otherwise we can just render the cell. 
+                            Actually, we can pass it via cell context in columns, but easier to let the parent trigger state. */}
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                  {expandedRowRenderer && row.getIsExpanded() && (
+                    <tr className="bg-gray-50/80">
+                      <td colSpan={row.getVisibleCells().length} className="p-0 border-b">
+                        {expandedRowRenderer(row.original, () => row.toggleExpanded())}
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
           </tbody>
         </table>
@@ -125,7 +145,7 @@ export function DataTable<TData>({
 
       {/* PAGINATION */}
       {!disablePagination && (
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-50">
+      <div className="flex items-center justify-between px-4 py-3 bg-gray-50 print:hidden">
         <button
           className="px-3 py-1 border rounded-md bg-white hover:bg-gray-100"
           onClick={() => table.previousPage()}

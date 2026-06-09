@@ -8,4 +8,11 @@ export interface PartyLedger {
   address?: string;
   is_active: boolean;
   account_id: number;
+  account?: {
+    id: number;
+    type: string;
+    current_balance?: number;
+    opening_balance?: number;
+    opening_balance_type?: string;
+  };
 }

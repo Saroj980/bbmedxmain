@@ -74,7 +74,7 @@ export default function ProductUnitLevelsBuilder({ value, onChange }: Props) {
           {/* card */}
           <Card
             size="small"
-            className="shadow-sm border rounded-xl border shadow-sm my-2 transition"
+            className="shadow-sm border rounded-xl my-2 transition hover:border-[#009966]/30"
             title={
               <div className="flex justify-between items-center">
                 <span className="font-medium text-sm text-gray-700">
@@ -132,7 +132,7 @@ export default function ProductUnitLevelsBuilder({ value, onChange }: Props) {
         type="dashed"
         icon={<PlusOutlined />}
         onClick={addLevel}
-        style={{ width: "100%", height: 32, fontWeight: 500, fontSize: '12px' }}
+        className="w-full h-10 font-bold text-xs rounded-xl border-[#009966] text-[#009966] hover:text-[#008855] hover:border-[#008855] transition-all bg-[#F1FAF6]/50"
       >
         Add Unit Level
       </Button>
