@@ -88,7 +88,6 @@ export default function BalancesTab({ accounts, loading }: { accounts: any[]; lo
           columns={columns}
           data={leafAccounts}
           loading={loading}
-          rowKey="id"
           pageSize={20}
         />
       </div>

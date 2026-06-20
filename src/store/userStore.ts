@@ -16,6 +16,7 @@ interface UserState {
   hydrated: boolean;
 
   setAuth: (token: string, refreshToken: string, user: User | null, permissions: string[]) => void;
+  setUser: (user: User | null) => void;
   logout: () => void;
   setHydrated: (val: boolean) => void;
 }
@@ -39,6 +40,7 @@ export const useUserStore = create<UserState>()(
           user,
           permissions,
         }),
+      setUser: (user) => set({ user }),
 
       // ------------------------------
       // Logout

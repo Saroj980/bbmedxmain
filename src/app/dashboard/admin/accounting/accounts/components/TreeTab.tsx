@@ -56,7 +56,7 @@ export default function TreeTab({
     return [selectedNode];
   };
 
-  const visibleAccounts = getVisibleAccounts().filter(a => 
+  const visibleAccounts = getVisibleAccounts().filter((a: any) => 
     a.name.toLowerCase().includes(search.toLowerCase()) || 
     a.code.toLowerCase().includes(search.toLowerCase())
   );
@@ -170,7 +170,6 @@ export default function TreeTab({
             loading={loading}
             disablePagination
             pageSize={10000}
-            rowKey="id"
           />
         </div>
       </div>

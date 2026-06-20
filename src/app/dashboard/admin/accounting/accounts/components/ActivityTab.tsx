@@ -90,9 +90,7 @@ export default function ActivityTab({ fiscalYear }: { fiscalYear: any }) {
             columns={columns}
             data={journals}
             loading={loading}
-            rowKey="id"
             pageSize={20}
-            className="border-0"
           />
         </div>
       </div>
