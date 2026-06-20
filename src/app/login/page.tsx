@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useUserStore } from "@/store/userStore";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   // const router = useRouter();
@@ -34,6 +35,7 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const setAuth = useUserStore((s) => s.setAuth);
@@ -115,14 +117,23 @@ export default function LoginPage() {
               <label className="text-sm font-medium text-foreground">
                 Password
               </label>
-              <Input
-                type="password"
-                placeholder="••••••••"
-                required
-                className="mt-1"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <div className="relative mt-1">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  required
+                  className="pr-10"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <Button
