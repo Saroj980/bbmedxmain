@@ -26,9 +26,9 @@ export default function LoginPage() {
     if (user) {
       const role = user.role;
 
-      if (role === "admin") router.replace("/dashboard/admin");
-      else if (role === "inventory") router.replace("/dashboard/inventory");
-      else router.replace("/dashboard/staff");
+      if (role === "admin") window.location.href = "/dashboard/admin";
+      else if (role === "inventory") window.location.href = "/dashboard/inventory";
+      else window.location.href = "/dashboard/staff";
     }
   }, [user, router]);
 
@@ -62,9 +62,9 @@ export default function LoginPage() {
 
       console.log("User Role:", res.data.user.permissions);
 
-      if (role === "admin") router.push("/dashboard/admin");
-      else if (role === "inventory") router.push("/dashboard/inventory");
-      else router.push("/dashboard/staff");
+      if (role === "admin") window.location.href = "/dashboard/admin";
+      else if (role === "inventory") window.location.href = "/dashboard/inventory";
+      else window.location.href = "/dashboard/staff";
     } catch (err: unknown) {
       toast.error("Invalid email or password");
     } finally {
