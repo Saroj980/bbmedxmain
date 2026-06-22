@@ -356,7 +356,6 @@ export default function StockStatusPage() {
         <Table
           dataSource={transformedData}
           columns={columns}
-          rowKey="key"
           loading={loading}
           pagination={false}
           className="professional-stock-table"

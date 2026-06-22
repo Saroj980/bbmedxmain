@@ -149,7 +149,6 @@ export default function ExpiryListPage() {
         <Table
           dataSource={filteredData}
           columns={columns}
-          rowKey="key"
           loading={loading}
           pagination={{ pageSize: 10 }}
           className="professional-stock-table"

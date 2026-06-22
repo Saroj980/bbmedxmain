@@ -245,8 +245,7 @@ export default function StockRegisterPage() {
       <Card className="shadow-xl border-none overflow-hidden rounded-xl bg-[#f8fafc]">
         <Table
           dataSource={filtered}
-          columns={columns}
-          rowKey={(r) => `${r.batch_no}-${r.date}-${r.stock_in}-${r.stock_out}`}
+          columns={columns}-${r.date}-${r.stock_in}-${r.stock_out}`}
           loading={loading}
           pagination={{ pageSize: 20 }}
           size="small"

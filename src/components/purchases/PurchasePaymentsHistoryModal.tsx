@@ -91,7 +91,6 @@ export default function PurchasePaymentsHistoryModal({ open, onClose, purchaseId
         <Table
           dataSource={payments}
           columns={columns}
-          rowKey="id"
           loading={loading}
           pagination={false}
           size="middle"

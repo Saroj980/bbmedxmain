@@ -198,8 +198,7 @@ export default function StockRegisterPrintView({ data, filters }: Props) {
         columns={columns}
         pagination={false}
         size="small"
-        bordered
-        rowKey={(r) => `${r.product_id}-${r.date}-${r.stock_in}-${r.stock_out}`}
+        bordered-${r.date}-${r.stock_in}-${r.stock_out}`}
         rowClassName={(r) =>
           r.stock_in > 0 ? "print-row-green" : r.stock_out > 0 ? "print-row-red" : ""
         }

@@ -170,7 +170,6 @@ export default function TreeTab({
             loading={loading}
             disablePagination
             pageSize={10000}
-            rowKey="id"
           />
         </div>
       </div>

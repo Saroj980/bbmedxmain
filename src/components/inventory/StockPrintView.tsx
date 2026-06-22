@@ -125,7 +125,6 @@ export default function StockPrintView({ data, searchQuery }: Props) {
         pagination={false}
         bordered
         size="small"
-        rowKey="key"
         className="print-table mb-6"
         rowClassName={(record) => record.isCategory ? 'bg-gray-50 font-bold' : ''}
         footer={() => (

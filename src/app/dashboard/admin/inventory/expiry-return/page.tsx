@@ -124,7 +124,6 @@ export default function ExpiryReturnPage() {
         <Table
           dataSource={filteredData}
           columns={columns}
-          rowKey="key"
           loading={loading}
           pagination={{ pageSize: 12 }}
           className="professional-stock-table"
