@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { User, Lock, Save, ShieldCheck, Mail, Briefcase, Check } from "lucide-react";
 import { notification } from "antd";
+import { toast } from "sonner";
 
 export default function ProfilePage() {
   const user = useUserStore((s) => s.user);
@@ -27,13 +28,11 @@ export default function ProfilePage() {
     try {
       const res = await api.post("/user/profile", { name, email });
       setUser(res.data.user);
-      notification.success({
-        message: "Profile Updated",
+      toast.success("Profile Updated", {
         description: "Your personal details have been updated successfully.",
       });
     } catch (error: any) {
-      notification.error({
-        message: "Update Failed",
+      toast.error("Update Failed", {
         description: error.response?.data?.message || "Failed to update profile.",
       });
     } finally {
@@ -45,16 +44,14 @@ export default function ProfilePage() {
     e.preventDefault();
 
     if (newPassword !== confirmPassword) {
-      notification.error({
-        message: "Password Mismatch",
+      toast.error("Password Mismatch", {
         description: "New password and confirmation do not match.",
       });
       return;
     }
 
     if (newPassword.length < 6) {
-      notification.error({
-        message: "Invalid Password",
+      toast.error("Invalid Password", {
         description: "Password must be at least 6 characters long.",
       });
       return;
@@ -68,8 +65,7 @@ export default function ProfilePage() {
         new_password_confirmation: confirmPassword,
       });
 
-      notification.success({
-        message: "Password Updated",
+      toast.success("Password Updated", {
         description: "Your password has been successfully changed.",
       });
 
@@ -77,8 +73,7 @@ export default function ProfilePage() {
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: any) {
-      notification.error({
-        message: "Update Failed",
+      toast.error("Update Failed", {
         description: error.response?.data?.message || "Failed to change password. Please check your current password.",
       });
     } finally {

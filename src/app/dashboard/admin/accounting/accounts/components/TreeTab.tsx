@@ -56,7 +56,7 @@ export default function TreeTab({
     return [selectedNode];
   };
 
-  const visibleAccounts = getVisibleAccounts().filter(a => 
+  const visibleAccounts = getVisibleAccounts().filter((a: any) => 
     a.name.toLowerCase().includes(search.toLowerCase()) || 
     a.code.toLowerCase().includes(search.toLowerCase())
   );

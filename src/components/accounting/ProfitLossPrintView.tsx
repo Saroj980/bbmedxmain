@@ -82,7 +82,7 @@ export default function ProfitLossPrintView({ report, kpis, fiscalYear, fromDate
               {variance > 0 ? "+" : ""}{formatNPR(variance)}
             </td>
             <td className="py-2 px-2 text-[10px] text-right text-gray-900">
-              {variancePercent > 0 ? "+" : ""}{variancePercent}%
+              {Number(variancePercent) > 0 ? "+" : ""}{variancePercent}%
             </td>
           </>
         )}

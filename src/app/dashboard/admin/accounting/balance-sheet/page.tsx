@@ -611,7 +611,7 @@ export default function BalanceSheetPage() {
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <RechartsTooltip formatter={(value: number) => `NPR ${formatNPR(value)}`} />
+                    <RechartsTooltip formatter={(value: any) => `NPR ${formatNPR(value)}`} />
                     <Legend verticalAlign="middle" align="right" layout="vertical" wrapperStyle={{ fontSize: '10px' }} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -638,7 +638,7 @@ export default function BalanceSheetPage() {
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <RechartsTooltip formatter={(value: number) => `NPR ${formatNPR(value)}`} />
+                    <RechartsTooltip formatter={(value: any) => `NPR ${formatNPR(value)}`} />
                     <Legend verticalAlign="middle" align="right" layout="vertical" wrapperStyle={{ fontSize: '10px' }} />
                   </PieChart>
                 </ResponsiveContainer>
