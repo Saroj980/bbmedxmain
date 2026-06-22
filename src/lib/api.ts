@@ -1,9 +1,7 @@
 import axios from "axios";
 import { useUserStore } from "@/store/userStore";
 
-const BASE_URL = process.env.NODE_ENV === "development"
-  ? "/api"
-  : (process.env.NEXT_PUBLIC_API_URL || "https://marigold52.edu.np/bbmedx-backend-main/public/api").replace(/\/$/, "");
+const BASE_URL = "/api";
 
 export const api = axios.create({
   baseURL: BASE_URL,
