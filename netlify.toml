@@ -1,5 +1,5 @@
 [[redirects]]
   from = "/api/*"
-  to = "https://westernpharmacy.com.np/api/:splat"
+  to = "https://marigold52.edu.np/bbmedx-backend-main/public/api/:splat"
   status = 200
   force = true
