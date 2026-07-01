@@ -1,9 +1,7 @@
 import axios from "axios";
 import { useUserStore } from "@/store/userStore";
 
-const PROD_API_URL = "https://westernpharmacy.com.np";
-const DEV_URL = "";
-const BASE_URL = process.env.NODE_ENV === "production" ? PROD_API_URL : DEV_URL;
+const BASE_URL = "";
 
 export const api = axios.create({
   baseURL: `${BASE_URL}/api`,
