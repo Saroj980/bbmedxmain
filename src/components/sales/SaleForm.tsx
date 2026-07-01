@@ -90,6 +90,9 @@ export default function SaleForm({ open, onClose, refresh }: any) {
   );
 
   const vatAmount = useMemo(() => taxableAmount * 0.13, [taxableAmount]);
+  const totalFreeCarrierCost = useMemo(() => {
+    return items.reduce((sum, item) => sum + Number(item.free_carrier_cost || 0), 0);
+  }, [items]);
   const totalAmount = grossAmount + vatAmount;
   const netPayable = Math.max(0, totalAmount - (Number(discount) || 0));
   const pendingAmount = isPaying ? Math.max(0, netPayable - (Number(payment.amount) || 0)) : netPayable;
@@ -267,6 +270,13 @@ export default function SaleForm({ open, onClose, refresh }: any) {
                   <span>Total VAT (13%)</span>
                   <span className="text-orange-600">{formatNepaliCurrency(vatAmount)}</span>
                 </div>
+
+                {totalFreeCarrierCost > 0 && (
+                  <div className="flex justify-between text-[11px] text-gray-500 font-medium px-2">
+                    <span>Carrier Cost on Free Items</span>
+                    <span className="text-emerald-600 font-bold">{formatNepaliCurrency(totalFreeCarrierCost)}</span>
+                  </div>
+                )}
 
                 <div className="flex justify-between items-center text-[11px] text-gray-500 font-medium px-2 gap-2">
                   <span>Overall Discount</span>

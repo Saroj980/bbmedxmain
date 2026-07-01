@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Modal, Select } from "antd";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -28,8 +28,9 @@ const EMPTY_FORM = {
   base_cost: 0,
   landed_cost: 0,
   retail_margin_pct: 16,
-  distributor_margin_pct: 0,
-  firm_margin_pct: 0,
+  distributor_margin_pct: 10,
+  firm_margin_pct: 7,
+  cc_margin_pct: 7,
   distributor_margin_basis: "retail_margin",
   apply_retail_margin: false,
   apply_distributor_margin: false,
@@ -38,6 +39,7 @@ const EMPTY_FORM = {
   pricing_mode: 'FREE',
   cost_plus_percent: 0,
   custom_price: 0,
+  include_free_cc: false,
 };
 
 export default function SaleItemModal({
@@ -56,6 +58,25 @@ export default function SaleItemModal({
     firm_margin: 0,
   });
 
+  const qtyRef = useRef<HTMLInputElement>(null);
+  const freeQtyRef = useRef<HTMLInputElement>(null);
+  const unitPriceRef = useRef<HTMLInputElement>(null);
+  const discountPctRef = useRef<HTMLInputElement>(null);
+  const discountAmtRef = useRef<HTMLInputElement>(null);
+  const finalPriceRef = useRef<HTMLInputElement>(null);
+
+  const handleKeyDown = (e: React.KeyboardEvent, nextRef: React.RefObject<HTMLInputElement | null> | 'submit') => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (nextRef === 'submit') {
+        handleSave();
+      } else {
+        nextRef.current?.focus();
+        nextRef.current?.select();
+      }
+    }
+  };
+
   /* ---------------- Load Products ---------------- */
   useEffect(() => {
     api.get("/products", { params: { available_only: 1 } })
@@ -66,8 +87,9 @@ export default function SaleItemModal({
         if (res.data) {
           setMarginSettings({
             retail_margin: Number(res.data.retail_margin) || 16,
-            distributor_margin: Number(res.data.distributor_margin) || 0,
-            firm_margin: Number(res.data.firm_margin) || 0,
+            distributor_margin: Number(res.data.distributor_margin) || 10,
+            firm_margin: Number(res.data.firm_margin) || 7,
+            cc_margin: 7, // Default fallback
           });
         }
       })
@@ -81,10 +103,12 @@ export default function SaleItemModal({
     if (editItem) {
       setForm({
         ...EMPTY_FORM,
-        retail_margin_pct: marginSettings.retail_margin,
-        distributor_margin_pct: marginSettings.distributor_margin,
-        firm_margin_pct: marginSettings.firm_margin,
+        retail_margin_pct: marginSettings.retail_margin || 16,
+        distributor_margin_pct: marginSettings.distributor_margin || 10,
+        firm_margin_pct: marginSettings.firm_margin || 7,
+        cc_margin_pct: marginSettings.cc_margin || 7,
         distributor_margin_basis: "retail_margin",
+                      pricing_mode: "FREE",
         apply_retail_margin: false,
         ...editItem,
       });
@@ -92,10 +116,12 @@ export default function SaleItemModal({
       setAvailability(null);
       setForm({
         ...EMPTY_FORM,
-        retail_margin_pct: marginSettings.retail_margin,
-        distributor_margin_pct: marginSettings.distributor_margin,
-        firm_margin_pct: marginSettings.firm_margin,
+        retail_margin_pct: marginSettings.retail_margin || 16,
+        distributor_margin_pct: marginSettings.distributor_margin || 10,
+        firm_margin_pct: marginSettings.firm_margin || 7,
+        cc_margin_pct: marginSettings.cc_margin || 7,
         distributor_margin_basis: "retail_margin",
+                      pricing_mode: "FREE",
         apply_retail_margin: false,
         is_bonus_item: true,
         bonus_parent_item_id: parentItem.id,
@@ -105,10 +131,12 @@ export default function SaleItemModal({
       setAvailability(null);
       setForm({
         ...EMPTY_FORM,
-        retail_margin_pct: marginSettings.retail_margin,
-        distributor_margin_pct: marginSettings.distributor_margin,
-        firm_margin_pct: marginSettings.firm_margin,
+        retail_margin_pct: marginSettings.retail_margin || 16,
+        distributor_margin_pct: marginSettings.distributor_margin || 10,
+        firm_margin_pct: marginSettings.firm_margin || 7,
+        cc_margin_pct: marginSettings.cc_margin || 7,
         distributor_margin_basis: "retail_margin",
+                      pricing_mode: "FREE",
         apply_retail_margin: false,
         is_bonus_item: false,
         bonus_parent_item_id: null,
@@ -131,6 +159,38 @@ export default function SaleItemModal({
     } catch {
       setAvailability(null);
     }
+  };
+
+  const handleSelectBatch = (b: any) => {
+    setForm((prev: any) => {
+      const newForm = {
+        ...prev,
+        batch_id: b.id,
+        quantity_unit_id: b.unit_id,
+        base_unit_id: b.unit_id,
+        hs_code: b.hs_code || "",
+        mrp: Number(b.mrp || 0),
+        base_cost: Number(b.base_cost || b.cost_price || 0),
+        landed_cost: Number(b.landed_cost || b.cost_price || 0),
+        retail_margin_pct: marginSettings.retail_margin || 16,
+        distributor_margin_pct: marginSettings.distributor_margin || 10,
+        firm_margin_pct: marginSettings.firm_margin || 7,
+        cc_margin_pct: marginSettings.cc_margin || 7,
+        distributor_margin_basis: "retail_margin",
+        pricing_mode: "FREE",
+        apply_retail_margin: false,
+        apply_distributor_margin: false,
+        apply_firm_margin: false,
+        base_price: Number(b.selling_price),
+        original_price: Number(b.selling_price),
+        discount_percent: 0,
+        discount_amount: 0,
+        selling_price: Number(b.selling_price),
+        vat_included: b.vat_included ?? false,
+        include_free_cc: b.has_carrier_cost ?? false,
+      };
+      return updatePrices(newForm);
+    });
   };
 
   useEffect(() => {
@@ -180,13 +240,17 @@ export default function SaleItemModal({
   /* ---------------- Custom Pricing Calculation ---------------- */
   const updatePrices = (currentForm: any) => {
     const mrp = Number(currentForm.mrp || 0);
-    const rPct = Number(currentForm.retail_margin_pct || 16);
-    const dPct = Number(currentForm.distributor_margin_pct || 0);
-    const fPct = Number(currentForm.firm_margin_pct || 0);
+    const rPct = Number(currentForm.retail_margin_pct ?? 16);
+    const dPct = Number(currentForm.distributor_margin_pct ?? 10);
+    const fPct = Number(currentForm.firm_margin_pct ?? 7);
 
-    const retailAmt = mrp * (rPct / 100);
-    const distAmt = currentForm.distributor_margin_basis === "mrp" ? mrp * (dPct / 100) : retailAmt * (dPct / 100);
-    const firmAmt = mrp * (fPct / 100);
+    const rmPrice = mrp / (1 + rPct / 100);
+    const dmPrice = rmPrice / (1 + dPct / 100);
+    const ccaPrice = dmPrice / (1 + fPct / 100);
+
+    const retailAmt = mrp - rmPrice;
+    const distAmt = rmPrice - dmPrice;
+    const firmAmt = dmPrice - ccaPrice;
 
     let baseSellingPrice = mrp;
     if (currentForm.apply_retail_margin) baseSellingPrice -= retailAmt;
@@ -208,13 +272,19 @@ export default function SaleItemModal({
   const mrp = Number(form.mrp || 0);
   const landedCost = Number(form.landed_cost || 0);
 
-  const rPct = Number(form.retail_margin_pct || 0);
-  const dPct = Number(form.distributor_margin_pct || 0);
-  const fPct = Number(form.firm_margin_pct || 0);
+  const rPct = Number(form.retail_margin_pct ?? 16);
+  const dPct = Number(form.distributor_margin_pct ?? 10);
+  const fPct = Number(form.firm_margin_pct ?? 7);
+  const ccPct = Number(form.cc_margin_pct ?? 7);
 
-  const retailAmt = mrp * (rPct / 100);
-  const distAmt = form.distributor_margin_basis === "mrp" ? mrp * (dPct / 100) : retailAmt * (dPct / 100);
-  const firmAmt = mrp * (fPct / 100);
+  const rmPrice = mrp / (1 + rPct / 100);
+  const dmPrice = rmPrice / (1 + dPct / 100);
+  const ccaPrice = dmPrice / (1 + fPct / 100);
+  const ccAmount = ccaPrice * (ccPct / 100);
+
+  const retailAmt = mrp - rmPrice;
+  const distAmt = rmPrice - dmPrice;
+  const firmAmt = dmPrice - ccaPrice;
 
   const totalMarginAmt = retailAmt + distAmt + firmAmt;
   const totalMarginPct = mrp > 0 ? (totalMarginAmt / mrp) * 100 : 0;
@@ -260,9 +330,23 @@ export default function SaleItemModal({
   const totalProfitAmount = totalRevenue - cogsAmount;
   const totalProfitPct = cogsAmount > 0 ? (totalProfitAmount / cogsAmount) * 100 : 0;
 
+  const freeCarrierCost = useMemo(() => {
+    if (!form.include_free_cc || freeQty <= 0) return 0;
+    const rPct = Number(form.retail_margin_pct ?? 16);
+    const dPct = Number(form.distributor_margin_pct ?? 10);
+    const A = mrp / (1 + rPct / 100);
+    const B = A / (1 + dPct / 100);
+    const C = B / 1.07;
+    return freeQty * (C * 0.07);
+  }, [form.include_free_cc, freeQty, mrp, form.retail_margin_pct, form.distributor_margin_pct]);
+
+  const vatAmount = useMemo(() => {
+    return form.vat_included ? (totalRevenue + freeCarrierCost) * VAT_RATE : 0;
+  }, [totalRevenue, freeCarrierCost, form.vat_included]);
+
   const lineTotal = useMemo(() => {
-    return form.vat_included ? totalRevenue * (1 + VAT_RATE) : totalRevenue;
-  }, [totalRevenue, form.vat_included]);
+    return totalRevenue + vatAmount + freeCarrierCost;
+  }, [totalRevenue, vatAmount, freeCarrierCost]);
 
   const totalDiscount = (form.discount_amount || 0) * baseQty;
 
@@ -298,7 +382,9 @@ export default function SaleItemModal({
       batch_unit_cost: landedCost,
       cogs_amount: cogsAmount,
       profit_amount: totalProfitAmount,
-      inventory_value: totalRevenue,
+      inventory_value: totalRevenue + freeCarrierCost,
+      free_carrier_cost: freeCarrierCost,
+      profit_margin: totalMarginPct,
       is_bonus_item: form.is_bonus_item || false,
       bonus_parent_item_id: form.bonus_parent_item_id || null,
     });
@@ -328,7 +414,7 @@ export default function SaleItemModal({
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-            <div className="md:col-span-4">
+             <div className="md:col-span-8">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Product</label>
               <Select
                 showSearch
@@ -347,72 +433,6 @@ export default function SaleItemModal({
             </div>
 
             <div className="md:col-span-4">
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                Batch (FEFO)
-              </label>
-              <Select
-                className="w-full mt-1.5"
-                placeholder="Select batch"
-                value={form.batch_id ?? undefined}
-                disabled={!availability}
-                onChange={id => {
-                  if (!availability?.batches) return;
-                  const b = availability.batches.find((x: any) => x.id === id);
-                  if (!b) return;
-
-                  setForm((prev: any) => {
-                    const newForm = {
-                      ...prev,
-                      batch_id: b.id,
-                      quantity_unit_id: b.unit_id,
-                      base_unit_id: b.unit_id,
-                      hs_code: b.hs_code || "",
-                      mrp: Number(b.mrp || 0),
-                      base_cost: Number(b.base_cost || b.cost_price || 0),
-                      landed_cost: Number(b.landed_cost || b.cost_price || 0),
-                      retail_margin_pct: marginSettings.retail_margin,
-                      distributor_margin_pct: marginSettings.distributor_margin,
-                      firm_margin_pct: marginSettings.firm_margin,
-                      distributor_margin_basis: "retail_margin",
-                      apply_retail_margin: false,
-                      apply_distributor_margin: false,
-                      apply_firm_margin: false,
-                      base_price: Number(b.selling_price),
-                      original_price: Number(b.selling_price),
-                      discount_percent: 0,
-                      discount_amount: 0,
-                      selling_price: Number(b.selling_price),
-                      vat_included: b.vat_included ?? false,
-                    };
-                    return updatePrices(newForm);
-                  });
-                }}
-                options={(availability?.batches || [])
-                  .filter((b: any) => !b.expired && b.current_stock > 0)
-                  .map((b: any) => ({
-                    value: b.id,
-                    label: `${b.batch_no} | Exp ${dayjs(b.expiry_date).format("YYYY-MM-DD")} | ${b.current_stock}`,
-                  }))}
-              />
-            </div>
-
-            <div className="md:col-span-4">
-               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Available Stock</label>
-               <div className="flex gap-2 flex-wrap mt-1.5 h-8 items-center">
-                  {!availability ? (
-                    <span className="text-sm text-gray-400 italic">Select product first</span>
-                  ) : (
-                    (availability?.units || []).map((u: any) => (
-                      <div key={u.unit_id} className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
-                        <Package size={12} />
-                        {formatNepaliCurrency(u.available || 0)} {u.unit_name}
-                      </div>
-                    ))
-                  )}
-               </div>
-            </div>
-            
-            <div className="md:col-span-12">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">HS Code (Optional)</label>
               <Input
                 className="mt-1.5 h-9 bg-gray-50/50"
@@ -421,6 +441,90 @@ export default function SaleItemModal({
                 onChange={e => setForm({ ...form, hs_code: e.target.value })}
               />
             </div>
+
+            {availability && availability.batches && availability.batches.length > 0 && (
+              <div className="md:col-span-12 mt-2">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2.5 block">
+                  Select Batch (FEFO Ordered)
+                </label>
+                <div className="border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm bg-white">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-500 font-bold">
+                        <th className="p-3 pl-4">Batch Number</th>
+                        <th className="p-3">Expiry Date</th>
+                        <th className="p-3 text-right">Regular Stock</th>
+                        <th className="p-3 text-right">Free Stock</th>
+                        <th className="p-3 text-right font-black">Total Stock</th>
+                        <th className="p-3 text-center">Status / Selection</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {availability.batches.map((b: any) => {
+                        const isSelected = form.batch_id === b.id;
+                        const isExpired = b.expired;
+                        const expiryDateStr = b.expiry_date && dayjs(b.expiry_date).isValid()
+                          ? dayjs(b.expiry_date).format("YYYY-MM-DD")
+                          : "No Expiry";
+                        
+                        // Find unit name
+                        const uName = availability.units?.find((u: any) => u.unit_id === b.unit_id)?.unit_name || "Units";
+
+                        return (
+                          <tr
+                            key={b.id}
+                            onClick={() => {
+                              if (isExpired || b.current_stock <= 0) return;
+                              handleSelectBatch(b);
+                            }}
+                            className={`transition-all duration-150 cursor-pointer ${
+                              isSelected
+                                ? "bg-emerald-50/50 hover:bg-emerald-50/70"
+                                : isExpired || b.current_stock <= 0
+                                ? "opacity-50 cursor-not-allowed bg-slate-50/30"
+                                : "hover:bg-slate-50/60"
+                            }`}
+                          >
+                            <td className="p-3 pl-4 font-bold text-slate-800">{b.batch_no}</td>
+                            <td className="p-3">
+                              {isExpired ? (
+                                <span className="text-red-600 font-bold flex items-center gap-1">
+                                  ⚠️ Expired ({expiryDateStr})
+                                </span>
+                              ) : (
+                                <span className="text-slate-600 font-medium">{expiryDateStr}</span>
+                              )}
+                            </td>
+                            <td className="p-3 text-right text-slate-600 font-medium">
+                              {b.regular_stock || 0} {uName}
+                            </td>
+                            <td className="p-3 text-right text-slate-600 font-medium">
+                              {b.free_stock || 0} {uName}
+                            </td>
+                            <td className="p-3 text-right text-slate-900 font-bold">
+                              {b.current_stock} {uName}
+                            </td>
+                            <td className="p-3 text-center">
+                              {isSelected ? (
+                                <span className="bg-emerald-500 text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow-sm">
+                                  Selected
+                                </span>
+                              ) : isExpired ? (
+                                <span className="text-red-500 text-[10px] font-bold">Unavailable</span>
+                              ) : (
+                                <span className="text-emerald-600 bg-emerald-50 border border-emerald-100 hover:bg-emerald-100 hover:text-emerald-700 transition-colors text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full">
+                                  Select Batch
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -463,301 +567,282 @@ export default function SaleItemModal({
 
           {/* Core Prices */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Commented out Landed Cost card as requested
             <div className="bg-emerald-50/30 border border-emerald-100 rounded-xl p-3">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Landed Cost</label>
               <div className="text-xl font-bold text-gray-800 mt-1">{formatNepaliCurrency(landedCost)}</div>
             </div>
+            */}
             <div className="bg-blue-50/30 border border-blue-100 rounded-xl p-3">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">MRP</label>
               <div className="text-xl font-bold text-gray-800 mt-1">{formatNepaliCurrency(mrp)}</div>
             </div>
           </div>
 
-          {/* Margins */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="border border-gray-100 rounded-xl p-4 bg-gray-50/30 relative">
-              <div className="absolute right-3 top-3">
-                <input 
-                  type="checkbox" 
-                  checked={form.apply_retail_margin ?? false}
-                  onChange={e => setForm(updatePrices({ ...form, apply_retail_margin: e.target.checked }))}
-                  className="accent-emerald-600 w-4 h-4 cursor-pointer"
-                />
-              </div>
-              <label className="text-xs font-bold text-gray-700 block mb-2">Retail Margin %</label>
-              <Input
-                type="number"
-                className="h-9 bg-white"
-                value={form.retail_margin_pct ?? 0}
-                onChange={e => setForm(updatePrices({ ...form, retail_margin_pct: Number(e.target.value) }))}
-              />
-              <div className="mt-3">
-                <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Retail Margin Amount</span>
-                <span className="font-bold text-orange-600 text-sm">{formatNepaliCurrency(retailAmt)}</span>
-              </div>
-            </div>
-
-            <div className="border border-gray-100 rounded-xl p-4 bg-gray-50/30 relative">
-              <div className="absolute right-3 top-3">
-                <input 
-                  type="checkbox" 
-                  checked={form.apply_distributor_margin ?? false}
-                  onChange={e => setForm(updatePrices({ ...form, apply_distributor_margin: e.target.checked }))}
-                  className="accent-emerald-600 w-4 h-4 cursor-pointer"
-                />
-              </div>
-              <label className="text-xs font-bold text-gray-700 block mb-2">Distributor Margin %</label>
-              <Input
-                type="number"
-                className="h-9 bg-white"
-                value={form.distributor_margin_pct ?? 0}
-                onChange={e => setForm(updatePrices({ ...form, distributor_margin_pct: Number(e.target.value) }))}
-              />
-              <div className="mt-3">
-                <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1.5">Basis</span>
-                <div className="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200">
-                  <button
-                    className={`flex-1 text-[10px] font-bold py-1.5 rounded-md transition-colors ${form.distributor_margin_basis === "retail_margin" ? "bg-white text-blue-700 shadow-sm border border-gray-200/50" : "text-gray-500 hover:text-gray-700"}`}
-                    onClick={() => setForm(updatePrices({ ...form, distributor_margin_basis: "retail_margin" }))}
-                  >
-                    Retail Margin
-                  </button>
-                  <button
-                    className={`flex-1 text-[10px] font-bold py-1.5 rounded-md transition-colors ${form.distributor_margin_basis === "mrp" ? "bg-white text-blue-700 shadow-sm border border-gray-200/50" : "text-gray-500 hover:text-gray-700"}`}
-                    onClick={() => setForm(updatePrices({ ...form, distributor_margin_basis: "mrp" }))}
-                  >
-                    MRP
-                  </button>
+          {/* Interactive Sales Target Tier Selector */}
+          <div className="space-y-3">
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block">Select Sales Target Tier</label>
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              
+              {/* Consumer Tier */}
+              <div 
+                onClick={() => setForm(updatePrices({
+                  ...form,
+                  apply_retail_margin: false,
+                  apply_distributor_margin: false,
+                  apply_firm_margin: false
+                }))}
+                className={`border-2 rounded-2xl p-4 cursor-pointer transition-all duration-200 flex flex-col justify-between h-36 ${
+                  !form.apply_retail_margin && !form.apply_distributor_margin && !form.apply_firm_margin
+                    ? "border-emerald-500 bg-emerald-50/20 shadow-sm"
+                    : "border-gray-100 hover:border-gray-200 bg-white"
+                }`}
+              >
+                <div>
+                  <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${
+                    !form.apply_retail_margin && !form.apply_distributor_margin && !form.apply_firm_margin
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-gray-100 text-gray-600"
+                  }`}>Consumer</span>
+                  <p className="text-[11px] font-medium text-gray-400 mt-2">Full retail price (no margins deducted)</p>
+                </div>
+                <div className="text-lg font-black text-gray-800">
+                  {formatNepaliCurrency(mrp)}
                 </div>
               </div>
-              <div className="mt-3">
-                <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Distributor Margin Amount</span>
-                <span className="font-bold text-blue-600 text-sm">{formatNepaliCurrency(distAmt)}</span>
+
+              {/* Retailer Tier */}
+              <div 
+                onClick={() => setForm(updatePrices({
+                  ...form,
+                  apply_retail_margin: true,
+                  apply_distributor_margin: false,
+                  apply_firm_margin: false
+                }))}
+                className={`border-2 rounded-2xl p-4 cursor-pointer transition-all duration-200 flex flex-col justify-between h-36 ${
+                  form.apply_retail_margin && !form.apply_distributor_margin && !form.apply_firm_margin
+                    ? "border-emerald-500 bg-emerald-50/20 shadow-sm"
+                    : "border-gray-100 hover:border-gray-200 bg-white"
+                }`}
+              >
+                <div>
+                  <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${
+                    form.apply_retail_margin && !form.apply_distributor_margin && !form.apply_firm_margin
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-gray-100 text-gray-600"
+                  }`}>Retailer</span>
+                  <p className="text-[11px] font-medium text-gray-400 mt-2">Deducts {form.retail_margin_pct ?? 16}% Retail Margin (-{formatNepaliCurrency(retailAmt)})</p>
+                </div>
+                <div className="text-lg font-black text-gray-800">
+                  {formatNepaliCurrency(rmPrice)}
+                </div>
+              </div>
+
+              {/* Distributor Tier */}
+              <div 
+                onClick={() => setForm(updatePrices({
+                  ...form,
+                  apply_retail_margin: true,
+                  apply_distributor_margin: true,
+                  apply_firm_margin: false
+                }))}
+                className={`border-2 rounded-2xl p-4 cursor-pointer transition-all duration-200 flex flex-col justify-between h-36 ${
+                  form.apply_retail_margin && form.apply_distributor_margin && !form.apply_firm_margin
+                    ? "border-emerald-500 bg-emerald-50/20 shadow-sm"
+                    : "border-gray-100 hover:border-gray-200 bg-white"
+                }`}
+              >
+                <div>
+                  <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${
+                    form.apply_retail_margin && form.apply_distributor_margin && !form.apply_firm_margin
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-gray-100 text-gray-600"
+                  }`}>Distributor</span>
+                  <p className="text-[11px] font-medium text-gray-400 mt-2">Deducts {form.retail_margin_pct ?? 16}% RM + {form.distributor_margin_pct ?? 10}% DM (-{formatNepaliCurrency(retailAmt + distAmt)})</p>
+                </div>
+                <div className="text-lg font-black text-gray-800">
+                  {formatNepaliCurrency(dmPrice)}
+                </div>
+              </div>
+
+              {/* Hospital / Firm Tier */}
+              <div 
+                onClick={() => setForm(updatePrices({
+                  ...form,
+                  apply_retail_margin: true,
+                  apply_distributor_margin: true,
+                  apply_firm_margin: true
+                }))}
+                className={`border-2 rounded-2xl p-4 cursor-pointer transition-all duration-200 flex flex-col justify-between h-36 ${
+                  form.apply_retail_margin && form.apply_distributor_margin && form.apply_firm_margin
+                    ? "border-emerald-500 bg-emerald-50/20 shadow-sm"
+                    : "border-gray-100 hover:border-gray-200 bg-white"
+                }`}
+              >
+                <div>
+                  <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${
+                    form.apply_retail_margin && form.apply_distributor_margin && form.apply_firm_margin
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-gray-100 text-gray-600"
+                  }`}>Firm / CCA</span>
+                  <p className="text-[11px] font-medium text-gray-400 mt-2">Deducts {form.retail_margin_pct ?? 16}% RM + {form.distributor_margin_pct ?? 10}% DM + {form.firm_margin_pct ?? 7}% Firm (-{formatNepaliCurrency(retailAmt + distAmt + firmAmt)})</p>
+                </div>
+                <div className="text-lg font-black text-gray-800">
+                  {formatNepaliCurrency(ccaPrice)}
+                </div>
+              </div>
+
+              {/* Fallback Custom Card if state doesn't match standard tiers */}
+              {!((!form.apply_retail_margin && !form.apply_distributor_margin && !form.apply_firm_margin) ||
+                 (form.apply_retail_margin && !form.apply_distributor_margin && !form.apply_firm_margin) ||
+                 (form.apply_retail_margin && form.apply_distributor_margin && !form.apply_firm_margin) ||
+                 (form.apply_retail_margin && form.apply_distributor_margin && form.apply_firm_margin)) && (
+                <div className="border-2 border-amber-500 bg-amber-50/10 rounded-2xl p-4 flex flex-col justify-between h-36">
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-amber-100 text-amber-800">Custom Tier</span>
+                    <p className="text-[11px] font-medium text-gray-400 mt-2">Custom margin selection active</p>
+                  </div>
+                  <div className="text-lg font-black text-gray-800">
+                    {formatNepaliCurrency(form.original_price)}
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+
+          {/* Detailed Margin Mathematical Breakdown */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Retail Card */}
+            <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between gap-4">
+              <div>
+                <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest block mb-2.5">
+                  Retail Level
+                </span>
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                  Retail Margin (RM)
+                </label>
+                <div className="relative flex items-center max-w-[120px]">
+                  <input
+                    type="number"
+                    value={form.retail_margin_pct ?? 16}
+                    onChange={e => setForm(updatePrices({ ...form, retail_margin_pct: Number(e.target.value) }))}
+                    className="w-full h-9 pl-3 pr-8 text-sm font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                  />
+                  <span className="absolute right-3 text-xs font-bold text-slate-400">%</span>
+                </div>
+              </div>
+              <div className="border-t border-slate-100 pt-3 flex justify-between items-center">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Margin Amount</span>
+                <span className="text-base font-extrabold text-orange-600">
+                  {formatNepaliCurrency(retailAmt)}
+                </span>
               </div>
             </div>
 
-            <div className="border border-gray-100 rounded-xl p-4 bg-gray-50/30 relative">
-              <div className="absolute right-3 top-3">
-                <input 
-                  type="checkbox" 
-                  checked={form.apply_firm_margin ?? false}
-                  onChange={e => setForm(updatePrices({ ...form, apply_firm_margin: e.target.checked }))}
-                  className="accent-emerald-600 w-4 h-4 cursor-pointer"
-                />
+            {/* Distributor Card */}
+            <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between gap-4">
+              <div>
+                <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest block mb-2.5">
+                  Distributor Level
+                </span>
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                  Distributor Margin (DM)
+                </label>
+                <div className="relative flex items-center max-w-[120px]">
+                  <input
+                    type="number"
+                    value={form.distributor_margin_pct ?? 10}
+                    onChange={e => setForm(updatePrices({ ...form, distributor_margin_pct: Number(e.target.value) }))}
+                    className="w-full h-9 pl-3 pr-8 text-sm font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  />
+                  <span className="absolute right-3 text-xs font-bold text-slate-400">%</span>
+                </div>
               </div>
-              <label className="text-xs font-bold text-gray-700 block mb-2">Firm Margin %</label>
-              <Input
-                type="number"
-                className="h-9 bg-white"
-                value={form.firm_margin_pct ?? 0}
-                onChange={e => setForm(updatePrices({ ...form, firm_margin_pct: Number(e.target.value) }))}
-              />
-              <div className="mt-3">
-                <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Firm Margin Amount</span>
-                <span className="font-bold text-purple-600 text-sm">{formatNepaliCurrency(firmAmt)}</span>
+              <div className="border-t border-slate-100 pt-3 flex justify-between items-center">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Margin Amount</span>
+                <span className="text-base font-extrabold text-blue-600">
+                  {formatNepaliCurrency(distAmt)}
+                </span>
+              </div>
+            </div>
+
+            {/* Firm Card */}
+            <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between gap-4">
+              <div>
+                <span className="text-[10px] font-black text-purple-500 uppercase tracking-widest block mb-2.5">
+                  Firm Level
+                </span>
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                  Firm Margin (CCA)
+                </label>
+                <div className="relative flex items-center max-w-[120px]">
+                  <input
+                    type="number"
+                    value={form.firm_margin_pct ?? 7}
+                    onChange={e => setForm(updatePrices({ ...form, firm_margin_pct: Number(e.target.value) }))}
+                    className="w-full h-9 pl-3 pr-8 text-sm font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                  />
+                  <span className="absolute right-3 text-xs font-bold text-slate-400">%</span>
+                </div>
+              </div>
+              <div className="border-t border-slate-100 pt-3 flex justify-between items-center">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Margin Amount</span>
+                <span className="text-base font-extrabold text-purple-600">
+                  {formatNepaliCurrency(firmAmt)}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Analytics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Analytics Summary */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="border border-gray-100 rounded-xl p-3 flex flex-col items-center justify-center bg-gray-50/50">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 text-center">Selling Price (Full Margin)</span>
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 text-center">Selling Price</span>
               <span className="text-lg font-black text-emerald-600">{formatNepaliCurrency(form.original_price)}</span>
             </div>
             <div className="border border-gray-100 rounded-xl p-3 flex flex-col items-center justify-center bg-gray-50/50">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 text-center">Total Margin Amount</span>
-              <span className="text-lg font-bold text-gray-800">{formatNepaliCurrency(totalMarginAmt)}</span>
-            </div>
-            <div className="border border-gray-100 rounded-xl p-3 flex flex-col items-center justify-center bg-gray-50/50">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 text-center">Total Margin % on MRP</span>
-              <span className="text-lg font-bold text-gray-800">{totalMarginPct.toFixed(2)}%</span>
-            </div>
-            <div className="border border-gray-100 rounded-xl p-3 flex flex-col items-center justify-center bg-emerald-50/30">
-              <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-1 text-center">Profit (Per Unit)</span>
-              <span className="text-lg font-black text-emerald-600">{formatNepaliCurrency(profitAmt)}</span>
-              <span className="text-[10px] text-gray-400 font-medium mt-0.5">({profitPct.toFixed(2)}%)</span>
-            </div>
-          </div>
-
-          {/* Price Simulation Scenarios */}
-          <div className="bg-[#FFFDF5] border border-yellow-200/60 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-yellow-600 block">💡</span>
-              <h4 className="text-[11px] font-black text-yellow-800 uppercase tracking-widest">Price Simulation Scenarios</h4>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-gray-500 uppercase">Break-even Price</span>
-                <span className="text-sm font-bold text-gray-800 mt-1">{formatNepaliCurrency(breakEvenPrice)}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-gray-500 uppercase">Full Margin Price</span>
-                <span className="text-sm font-bold text-gray-800 mt-1">{formatNepaliCurrency(fullMarginPrice)}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-gray-500 uppercase">W/O Retail Margin</span>
-                <span className="text-sm font-bold text-gray-800 mt-1">{formatNepaliCurrency(mspNoRetail)}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-gray-500 uppercase">W/O Distributor</span>
-                <span className="text-sm font-bold text-gray-800 mt-1">{formatNepaliCurrency(mspNoDist)}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-gray-500 uppercase">W/O Firm Margin</span>
-                <span className="text-sm font-bold text-gray-800 mt-1">{formatNepaliCurrency(mspNoFirm)}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-gray-500 uppercase">W/O Retail + Dist</span>
-                <span className="text-sm font-bold text-gray-800 mt-1">{formatNepaliCurrency(mspNoRetailDist)}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-gray-500 uppercase">W/O Retail + Firm</span>
-                <span className="text-sm font-bold text-gray-800 mt-1">{formatNepaliCurrency(mspNoRetailFirm)}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-gray-500 uppercase">W/O Dist + Firm</span>
-                <span className="text-sm font-bold text-gray-800 mt-1">{formatNepaliCurrency(mspNoDistFirm)}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-emerald-700 uppercase">MRP Price</span>
-                <span className="text-sm font-bold text-emerald-700 mt-1">{formatNepaliCurrency(mspNoMargins)}</span>
-              </div>
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 text-center">Total Margin Deducted</span>
+              <span className="text-lg font-bold text-gray-800">{formatNepaliCurrency(Math.max(0, mrp - form.original_price))}</span>
             </div>
           </div>
         </div>
 
         {/* ======================================== */}
-        {/* SECTION 3: BONUS / FREE PRODUCT          */}
+        {/* SECTION 3: SALE DETAILS & SUMMARY        */}
         {/* ======================================== */}
-        <div className="border border-indigo-100 rounded-2xl p-5 bg-indigo-50/20 shadow-sm space-y-5">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="bg-indigo-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-sm">3</div>
-            <h3 className="font-bold text-gray-800 tracking-tight text-[15px]">Bonus / Free Product</h3>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-            <div>
-              <label className="text-xs font-bold text-gray-600 block mb-1.5">Free Qty</label>
-              <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden h-10 w-full focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all bg-white">
-                <button 
-                  className="w-10 h-full bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors border-r border-gray-200"
-                  onClick={() => setForm({ ...form, free_qty: Math.max(0, (form.free_qty || 0) - 1) })}
-                >
-                  <Minus size={14} />
-                </button>
-                <input
-                  type="number"
-                  min={0}
-                  className="flex-1 h-full text-center text-sm font-bold focus:outline-none"
-                  value={form.free_qty ?? 0}
-                  onChange={e => setForm({ ...form, free_qty: Math.max(0, Number(e.target.value)) })}
-                />
-                <button 
-                  className="w-10 h-full bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors border-l border-gray-200"
-                  onClick={() => setForm({ ...form, free_qty: (form.free_qty || 0) + 1 })}
-                >
-                  <Plus size={14} />
-                </button>
-              </div>
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="text-xs font-bold text-gray-600 block mb-1.5">Pricing Mode</label>
-              <Select
-                className="w-full h-10 custom-select"
-                value={form.pricing_mode ?? 'FREE'}
-                onChange={v => setForm({ ...form, pricing_mode: v })}
-                options={[
-                  { value: 'FREE', label: 'Completely Free' },
-                  { value: 'LANDING_COST_ONLY', label: 'Landing Cost Only' },
-                  { value: 'COST_ONLY', label: 'Cost Only' },
-                  { value: 'COST_PLUS', label: 'Cost + %' },
-                  { value: 'MRP', label: 'MRP' },
-                  { value: 'CUSTOM', label: 'Custom Price' },
-                ]}
-              />
-            </div>
-
-            {form.pricing_mode === 'COST_PLUS' && (
-              <div>
-                <label className="text-xs font-bold text-gray-600 block mb-1.5">Markup %</label>
-                <Input
-                  type="number"
-                  className="h-10 font-bold bg-white"
-                  value={form.cost_plus_percent ?? 0}
-                  onChange={e => setForm({ ...form, cost_plus_percent: Number(e.target.value) })}
-                />
-              </div>
-            )}
-            {form.pricing_mode === 'CUSTOM' && (
-              <div>
-                <label className="text-xs font-bold text-gray-600 block mb-1.5">Custom Price</label>
-                <Input
-                  type="number"
-                  className="h-10 font-bold bg-white"
-                  value={form.custom_price ?? 0}
-                  onChange={e => setForm({ ...form, custom_price: Number(e.target.value) })}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Breakdowns */}
-          {freeQty > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <div className="bg-white border border-indigo-100 rounded-xl p-4">
-                 <h4 className="text-[11px] font-black text-indigo-800 uppercase tracking-widest mb-3">Revenue Breakdown</h4>
-                 <div className="space-y-2 text-sm">
-                   <div className="flex justify-between text-gray-600"><span>From Paid Qty:</span> <span>{formatNepaliCurrency(baseRevenue)}</span></div>
-                   <div className="flex justify-between text-gray-600"><span>From Free Qty:</span> <span>{formatNepaliCurrency(bonusRevenue)}</span></div>
-                   <div className="flex justify-between font-bold text-gray-900 border-t pt-2 mt-2"><span>Total Revenue:</span> <span>{formatNepaliCurrency(totalRevenue)}</span></div>
-                 </div>
-               </div>
-               
-               <div className="bg-white border border-indigo-100 rounded-xl p-4">
-                 <h4 className="text-[11px] font-black text-indigo-800 uppercase tracking-widest mb-3">COGS Breakdown</h4>
-                 <div className="space-y-2 text-sm">
-                   <div className="flex justify-between text-gray-600"><span>Paid Qty Cost:</span> <span>{formatNepaliCurrency(paidCogs)}</span></div>
-                   <div className="flex justify-between text-gray-600"><span>Free Qty Cost:</span> <span>{formatNepaliCurrency(freeCogs)}</span></div>
-                   <div className="flex justify-between font-bold text-gray-900 border-t pt-2 mt-2"><span>Total COGS:</span> <span>{formatNepaliCurrency(cogsAmount)}</span></div>
-                 </div>
-               </div>
-            </div>
-          )}
-        </div>
-
-        {/* ======================================== */}
-        {/* SECTION 4: SALE DETAILS & SUMMARY        */}
-        {/* ======================================== */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div className="lg:col-span-2 border border-gray-100 rounded-2xl p-5 bg-white shadow-sm space-y-5">
+        <div className="space-y-5">
+          <div className="border border-gray-100 rounded-2xl p-5 bg-white shadow-sm space-y-5">
             <div className="flex items-center gap-3 mb-2">
-              <div className="bg-emerald-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-sm">4</div>
+              <div className="bg-emerald-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-sm">3</div>
               <h3 className="font-bold text-gray-800 tracking-tight text-[15px]">Sale Details & Summary</h3>
             </div>
             
-            <div className="grid grid-cols-2 gap-5">
+            <div className="grid grid-cols-3 gap-5">
               <div>
-                <label className="text-xs font-bold text-gray-600 block mb-1.5">Quantity</label>
-                <div className={`flex items-center border border-gray-200 rounded-lg overflow-hidden h-10 w-full focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all ${form.is_bonus_item ? 'opacity-50 pointer-events-none' : ''}`}>
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">Quantity</label>
+                <div className={`flex items-center border border-slate-200 rounded-xl overflow-hidden h-10 w-full focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all bg-white ${form.is_bonus_item ? 'opacity-50 pointer-events-none' : ''}`}>
                   <button 
-                    className="w-10 h-full bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors border-r border-gray-200"
+                    type="button"
+                    className="w-10 h-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors border-r border-slate-200/60"
                     onClick={() => setForm({ ...form, quantity: Math.max(1, (form.quantity || 1) - 1) })}
                     disabled={form.is_bonus_item}
                   >
                     <Minus size={14} />
                   </button>
                   <input
+                    ref={qtyRef}
                     type="number"
                     min={1}
-                    className="flex-1 h-full text-center text-sm font-bold bg-white focus:outline-none"
+                    className="w-full flex-1 h-full text-center text-sm font-extrabold text-slate-800 bg-transparent focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     value={form.quantity ?? 1}
                     onChange={e => setForm({ ...form, quantity: Math.max(1, Number(e.target.value)) })}
                     disabled={form.is_bonus_item}
+                    onKeyDown={e => handleKeyDown(e, freeQtyRef)}
                   />
                   <button 
-                    className="w-10 h-full bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors border-l border-gray-200"
+                    type="button"
+                    className="w-10 h-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors border-l border-slate-200/60"
                     onClick={() => setForm({ ...form, quantity: (form.quantity || 1) + 1 })}
                     disabled={form.is_bonus_item}
                   >
@@ -767,7 +852,47 @@ export default function SaleItemModal({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-600 block mb-1.5">Unit</label>
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">Free Qty</label>
+                <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden h-10 w-full focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all bg-white">
+                  <button 
+                    type="button"
+                    className="w-10 h-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors border-r border-slate-200/60"
+                    onClick={() => setForm({ ...form, free_qty: Math.max(0, (form.free_qty || 0) - 1) })}
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <input
+                    ref={freeQtyRef}
+                    type="number"
+                    min={0}
+                    className="w-full flex-1 h-full text-center text-sm font-extrabold text-slate-800 bg-transparent focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    value={form.free_qty ?? 0}
+                    onChange={e => setForm({ ...form, free_qty: Math.max(0, Number(e.target.value)) })}
+                    onKeyDown={e => handleKeyDown(e, unitPriceRef)}
+                  />
+                  <button 
+                    type="button"
+                    className="w-10 h-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors border-l border-slate-200/60"
+                    onClick={() => setForm({ ...form, free_qty: (form.free_qty || 0) + 1 })}
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+                {freeQty > 0 && (
+                  <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 cursor-pointer select-none mt-2">
+                    <input
+                      type="checkbox"
+                      checked={!!form.include_free_cc}
+                      onChange={e => setForm({ ...form, include_free_cc: e.target.checked })}
+                      className="w-3.5 h-3.5 accent-emerald-600 rounded cursor-pointer"
+                    />
+                    Includes Carrier Cost (CC)
+                  </label>
+                )}
+              </div>
+
+              <div>
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">Unit</label>
                 <Select
                   className="w-full h-10 custom-select"
                   value={form.quantity_unit_id ?? undefined}
@@ -786,10 +911,11 @@ export default function SaleItemModal({
 
             <div className="grid grid-cols-3 gap-5">
               <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">Unit Price (Before Discount)</label>
-                <Input 
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">Unit Price (Before Discount)</label>
+                <input 
+                  ref={unitPriceRef}
                   type="number" 
-                  className="bg-white border-gray-200 text-gray-900 font-bold h-9" 
+                  className="w-full h-10 px-3 text-sm font-bold text-slate-800 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                   value={form.original_price ?? 0} 
                   onChange={e => {
                     const newPrice = Number(e.target.value);
@@ -798,46 +924,58 @@ export default function SaleItemModal({
                     const pct = newPrice > 0 ? (discountAmt / newPrice) * 100 : 0;
                     setForm({ ...form, original_price: newPrice, selling_price: sellingPrice, discount_percent: pct });
                   }}
+                  onKeyDown={e => handleKeyDown(e, discountPctRef)}
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">Discount %</label>
-                <div className="relative">
-                  <Input
-                    type="number" min={0} max={100} className="h-9 pr-6"
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">Discount %</label>
+                <div className="relative flex items-center w-full">
+                  <input
+                    ref={discountPctRef}
+                    type="number" 
+                    min={0} 
+                    max={100} 
+                    className="w-full h-10 pl-3 pr-8 text-sm font-bold text-slate-800 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     value={form.discount_percent ?? 0}
                     onChange={e => {
                       const pct = Number(e.target.value);
                       const amt = (form.original_price * pct) / 100;
                       setForm({ ...form, discount_percent: pct, discount_amount: amt, selling_price: form.original_price - amt });
                     }}
+                    onKeyDown={e => handleKeyDown(e, discountAmtRef)}
                   />
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">%</span>
+                  <span className="absolute right-3 text-xs font-bold text-slate-400">%</span>
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">Discount Amount</label>
-                <Input
-                  type="number" min={0} className="h-9"
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">Discount Amount</label>
+                <input
+                  ref={discountAmtRef}
+                  type="number" 
+                  min={0} 
+                  className="w-full h-10 px-3 text-sm font-bold text-slate-800 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   value={form.discount_amount ?? 0}
                   onChange={e => {
                     const amt = Number(e.target.value);
                     const pct = form.original_price > 0 ? (amt / form.original_price) * 100 : 0;
                     setForm({ ...form, discount_amount: amt, discount_percent: pct, selling_price: form.original_price - amt });
                   }}
+                  onKeyDown={e => handleKeyDown(e, finalPriceRef)}
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-2">
-              <div className="bg-emerald-50 border border-emerald-100 rounded-xl py-2 px-4 inline-flex flex-col flex-1 max-w-[250px]">
-                <label className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1 block">Final Selling Price (Per Unit)</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-700 font-black">रु</span>
+            <div className="flex items-center justify-between bg-slate-50/70 border border-slate-200/50 rounded-2xl p-4 gap-4 w-full">
+              <div className="flex flex-col flex-1 max-w-[240px]">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Final Selling Price (Per Unit)</label>
+                <div className="relative flex items-center w-full">
+                  <span className="absolute left-3.5 text-sm font-extrabold text-emerald-600">रु</span>
                   <input
+                    ref={finalPriceRef}
                     type="number"
-                    className="w-full bg-white border border-emerald-200 rounded-lg text-xl font-black text-emerald-700 h-10 pl-8 pr-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                    className="w-full h-10 pl-8 pr-3 text-base font-extrabold text-emerald-600 bg-white border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     value={form.selling_price ?? 0}
+                    onKeyDown={e => handleKeyDown(e, 'submit')}
                     onChange={e => {
                       const finalPrice = Number(e.target.value);
                       const orig = form.original_price || 0;
@@ -855,83 +993,98 @@ export default function SaleItemModal({
                 </div>
               </div>
               
-              <label className="flex items-center gap-2 text-sm font-bold text-gray-700 cursor-pointer bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+              <label className="flex items-center gap-2 px-4 py-2.5 border border-slate-200 bg-white rounded-xl text-xs font-bold text-slate-600 cursor-pointer hover:bg-slate-50 transition-colors shadow-sm select-none mt-5">
                 <input
                   type="checkbox"
                   checked={form.vat_included}
                   onChange={e => setForm({ ...form, vat_included: e.target.checked })}
-                  className="accent-emerald-600 w-4 h-4"
+                  className="w-4 h-4 accent-emerald-600 rounded cursor-pointer"
                 />
                 VAT Included (13%)
               </label>
             </div>
           </div>
 
-          <div className="border border-emerald-100 rounded-2xl p-5 bg-gradient-to-b from-emerald-50/50 to-emerald-100/30 flex flex-col shadow-sm">
-             <div className="flex-1 space-y-4">
-                <div className="flex items-start gap-3 mb-4 border-b border-emerald-200/50 pb-4">
-                  <div className="bg-emerald-100 p-2 rounded-lg text-emerald-600">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 15h0M2 9.5h20"/></svg>
-                  </div>
-                  <div>
-                    <span className="text-[11px] font-black text-emerald-800/60 uppercase tracking-widest block">Line Total</span>
-                    <span className="text-2xl font-black text-emerald-700">{formatNepaliCurrency(lineTotal)}</span>
-                  </div>
+          {/* Line Summary (Standard Level Dashboard Layout) */}
+          <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-start shadow-sm">
+            {/* Column 1: Quantities & Sales Value */}
+            <div className="bg-white/40 p-4 rounded-xl border border-emerald-100/50 space-y-3">
+              <h4 className="text-[10px] font-black text-emerald-800 uppercase tracking-widest border-b border-emerald-100/50 pb-1.5">Quantities & Sales Value</h4>
+              <div className="space-y-2 text-xs font-semibold text-emerald-950">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 font-medium">Sold Items</span>
+                  <span className="font-bold text-gray-800">{baseQty}</span>
                 </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500 font-medium">Paid Qty</span>
-                    <span className="font-bold text-gray-800">{baseQty}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500 font-medium">Free Qty</span>
-                    <span className="font-bold text-gray-800">{freeQty}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm pt-1 border-t border-emerald-200/50">
-                    <span className="text-emerald-800 font-bold uppercase tracking-wider text-[10px]">Total Outgoing Qty</span>
-                    <span className="font-black text-emerald-700">{totalOutgoingQty}</span>
-                  </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 font-medium">Free Items</span>
+                  <span className="font-bold text-gray-800">{freeQty}</span>
                 </div>
-
-                <div className="space-y-2 mt-4 pt-4 border-t border-emerald-200/50">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500 font-medium">Revenue</span>
-                    <span className="font-bold text-gray-800">{formatNepaliCurrency(totalRevenue)}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500 font-medium">COGS</span>
-                    <span className="font-bold text-gray-800">{formatNepaliCurrency(cogsAmount)}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm pt-1 border-t border-emerald-200/50">
-                    <span className="text-emerald-800 font-bold uppercase tracking-wider text-[10px]">Profit</span>
-                    <div className="text-right">
-                      <div className={`font-black ${totalProfitAmount < 0 ? 'text-red-600' : 'text-emerald-700'}`}>
-                        {formatNepaliCurrency(totalProfitAmount)}
-                      </div>
-                      <div className="text-[10px] text-gray-500 font-medium">
-                        Margin: {totalProfitPct.toFixed(1)}%
-                      </div>
+                <div className="flex justify-between items-center pt-1 border-t border-emerald-200/30">
+                  <span className="text-emerald-800 font-bold uppercase tracking-wider text-[10px]">Total Items Out</span>
+                  <span className="font-black text-emerald-700">{totalOutgoingQty}</span>
+                </div>
+                <div className="border-t border-emerald-200/30 my-2"></div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 font-medium">Sales Value</span>
+                  <span className="font-bold text-gray-800">{formatNepaliCurrency(totalRevenue)}</span>
+                </div>
+                {freeQty > 0 && (
+                  <div className="pl-3 space-y-1 border-l border-emerald-150/70 ml-1 text-[10px] text-gray-400">
+                    <div className="flex justify-between">
+                      <span>Value of Sold Items ({baseQty}):</span>
+                      <span>{formatNepaliCurrency(baseRevenue)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Value of Free Items ({freeQty}):</span>
+                      <span>{formatNepaliCurrency(bonusRevenue)}</span>
                     </div>
                   </div>
-                </div>
-                
-                <div className="space-y-2 mt-4 pt-4 border-t border-emerald-200/50">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500 font-medium">Break-even Price</span>
-                    <span className="font-bold text-gray-800">{formatNepaliCurrency(breakEvenPrice)}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500 font-medium">Current Selling Price</span>
-                    <span className="font-bold text-gray-800">{formatNepaliCurrency(form.selling_price)}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500 font-medium">Total Margin % (on MRP)</span>
-                    <span className="font-bold text-gray-800">{totalMarginPct.toFixed(1)}%</span>
-                  </div>
-                </div>
+                )}
+              </div>
+            </div>
 
-             </div>
+            {/* Column 2: Net Receivable & Receipt Details */}
+            <div className="bg-white/40 p-4 rounded-xl border border-emerald-100/50 space-y-3">
+              <div className="flex items-start gap-3 border-b border-emerald-200/50 pb-2">
+                <div className="bg-emerald-100 p-1.5 rounded-lg text-emerald-600">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 15h0M2 9.5h20"/></svg>
+                </div>
+                <div>
+                  <span className="text-[10px] font-black text-emerald-800/60 uppercase tracking-widest block">Net Receivable Amt</span>
+                  <span className="text-xl font-black text-emerald-700">{formatNepaliCurrency(lineTotal)}</span>
+                </div>
+              </div>
+              <div className="space-y-2 text-xs font-semibold text-emerald-950">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 font-medium">Total Items</span>
+                  <span className="font-bold text-gray-800">{totalOutgoingQty}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 font-medium">Free Items</span>
+                  <span className="font-bold text-gray-800">{freeQty}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 font-medium">Selling Price (Per Unit)</span>
+                  <span className="font-bold text-gray-800">{formatNepaliCurrency(form.selling_price)}</span>
+                </div>
+                {form.include_free_cc && freeCarrierCost > 0 && (
+                  <div className="flex justify-between items-center text-emerald-700">
+                    <span className="font-medium">Carrier Cost (Free Items)</span>
+                    <span className="font-bold">{formatNepaliCurrency(freeCarrierCost)}</span>
+                  </div>
+                )}
+                {form.vat_included && (
+                  <div className="flex justify-between items-center text-emerald-700">
+                    <span className="font-medium">13% VAT Included</span>
+                    <span className="font-bold">{formatNepaliCurrency(vatAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center pt-1 border-t border-emerald-200/30">
+                  <span className="text-gray-500 font-medium">Total Retail Margin %</span>
+                  <span className="font-bold text-gray-800">{totalMarginPct.toFixed(1)}%</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

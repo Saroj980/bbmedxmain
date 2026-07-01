@@ -31,7 +31,7 @@ export default function PurchaseInvoicePrintView({ purchase, summary, systemSett
   const totalAmount = Number(summary?.total_amount || purchase?.total_amount || 0);
 
   return (
-    <div className="p-8 text-[11px] leading-tight font-sans text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="p-8 text-[11px] leading-tight font-sans text-gray-900" style={{ fontFamily: "var(--font-outfit), sans-serif" }}>
 
       <PrintHeader systemSettings={systemSettings} title="Purchase Invoice" />
 

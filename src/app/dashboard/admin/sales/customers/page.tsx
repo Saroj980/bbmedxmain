@@ -7,9 +7,9 @@ import { DataTable } from "@/components/datatable/DataTable";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Plus } from "lucide-react";
 import PartyLedgerForm from "@/components/parties/PartyLedgerForm";
-import { supplierColumns } from "./supplier-columns";
+import { customerColumns } from "./customer-columns";
 
-export default function SuppliersPage() {
+export default function CustomersPage() {
   const router = useRouter();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,8 +21,8 @@ export default function SuppliersPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      // Fetch parties that are suppliers or both
-      const res = await api.get("/parties", { params: { type: "supplier,both" } });
+      // Fetch parties that are customers or both
+      const res = await api.get("/parties", { params: { type: "customer,both" } });
       setData(res.data || []);
     } catch (err) {
       console.error(err);
@@ -54,7 +54,7 @@ export default function SuppliersPage() {
     );
   }, [data, searchQuery]);
 
-  const columns = useMemo(() => supplierColumns(handleEdit, router), [router]);
+  const columns = useMemo(() => customerColumns(handleEdit, router), [router]);
 
   return (
     <div className="space-y-6">
@@ -62,8 +62,8 @@ export default function SuppliersPage() {
         <Breadcrumb
           items={[
             { label: "Dashboard", href: "/dashboard/admin" },
-            { label: "Purchases", href: "/dashboard/admin/purchases" },
-            { label: "Suppliers" },
+            { label: "Sales", href: "/dashboard/admin/sales" },
+            { label: "Customers" },
           ]}
         />
         <button
@@ -71,13 +71,13 @@ export default function SuppliersPage() {
           className="bg-[#009966] hover:bg-[#008055] text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors shadow-sm"
         >
           <Plus size={16} />
-          New Supplier
+          New Customer
         </button>
       </div>
 
       <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-wrap gap-4 items-end">
         <div className="flex flex-col gap-1 w-64">
-          <label className="text-xs font-medium text-gray-600">Search Suppliers</label>
+          <label className="text-xs font-medium text-gray-600">Search Customers</label>
           <input
             type="text"
             className="border rounded-md px-3 py-1.5 text-sm"
@@ -90,7 +90,7 @@ export default function SuppliersPage() {
 
       <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
         <DataTable
-          title="Suppliers"
+          title="Customers"
           columns={columns}
           data={filteredData}
           loading={loading}
@@ -102,7 +102,7 @@ export default function SuppliersPage() {
         onClose={() => setFormOpen(false)}
         refresh={loadData}
         editData={editData}
-        defaultIsSupplier={true}
+        defaultIsSupplier={false}
       />
     </div>
   );

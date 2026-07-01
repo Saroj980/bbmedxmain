@@ -7,9 +7,9 @@ import {
 } from "@/components/ui/tooltip";
 import { Pencil, Eye } from "lucide-react";
 
-export const supplierColumns = (onEdit: (party: any) => void, router: any) => [
+export const customerColumns = (onEdit: (party: any) => void, router: any) => [
   {
-    header: "Supplier Name",
+    header: "Customer Name",
     accessorKey: "name",
     id: "name",
     cell: ({ row }: any) => <div className="font-semibold text-gray-800">{row.original.name}</div>,
@@ -96,7 +96,7 @@ export const supplierColumns = (onEdit: (party: any) => void, router: any) => [
               </button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Edit Supplier</p>
+              <p>Edit Customer</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

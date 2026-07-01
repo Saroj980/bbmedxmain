@@ -60,9 +60,8 @@ export default function SystemSettingsPage() {
 
       setSettings(sanitizedData);
       
-      if (res.data.logo) {
-        const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").replace(/\/api$/, "");
-        setLogoPreview(`${baseUrl}/storage/${res.data.logo}`);
+      if (res.data.logo_url) {
+        setLogoPreview(res.data.logo_url);
       }
     } catch (err) {
       toast.error("Failed to fetch settings");
@@ -135,7 +134,7 @@ export default function SystemSettingsPage() {
   if (fetching) return <div className="p-8 text-center text-gray-500">Loading settings...</div>;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-0 space-y-6">
       <Breadcrumb
         items={[
           { label: "Dashboard", href: "/dashboard/admin" },
@@ -163,13 +162,13 @@ export default function SystemSettingsPage() {
         {/* Left Column: Essential Info */}
         <div className="md:col-span-2 space-y-6">
           <Card className="border-none shadow-sm bg-white/80 backdrop-blur-md">
-            <CardHeader className="border-b border-gray-100">
+            <CardHeader className="border-b border-gray-100 pb-1">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Building2 size={20} className="text-[#009966]" />
                 Organization Details
               </CardTitle>
             </CardHeader>
-            <CardContent className="px-6 space-y-4">
+            <CardContent className="px-6 py-2 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firm_name">Firm/Company Name</Label>
@@ -230,13 +229,13 @@ export default function SystemSettingsPage() {
           </Card>
 
           <Card className="border-none shadow-sm bg-white/80 backdrop-blur-md">
-            <CardHeader className="border-b border-gray-100">
+            <CardHeader className="border-b border-gray-100 pb-1">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Briefcase size={20} className="text-[#009966]" />
                 Taxation & Fiscal
               </CardTitle>
             </CardHeader>
-            <CardContent className="px-6 space-y-4">
+            <CardContent className="px-6 py-2 space-y-4">
               <div className="flex items-center gap-4 p-4 bg-green-50/50 rounded-xl border border-green-100">
                 <input 
                   type="checkbox" id="is_vat_registered" name="is_vat_registered"
@@ -272,13 +271,13 @@ export default function SystemSettingsPage() {
           </Card>
 
           <Card className="border-none shadow-sm bg-white/80 backdrop-blur-md">
-            <CardHeader className="border-b border-gray-100">
+            <CardHeader className="border-b border-gray-100 pb-1">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Receipt size={20} className="text-[#009966]" />
                 Receipt Customization
               </CardTitle>
             </CardHeader>
-            <CardContent className="px-6 space-y-4">
+            <CardContent className="px-6 py-2 space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="receipt_header">Header Text (Appears on Billing)</Label>
                 <textarea 
@@ -304,13 +303,13 @@ export default function SystemSettingsPage() {
         {/* Right Column: Logo & Meta */}
         <div className="space-y-6">
           <Card className="border-none shadow-sm bg-white/80 backdrop-blur-md">
-            <CardHeader className="border-b border-gray-100">
+            <CardHeader className="border-b border-gray-100 pb-1">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <ImageIcon size={20} className="text-[#009966]" />
                 Brand Logo
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6 flex flex-col items-center">
+            <CardContent className="px-6 py-2 flex flex-col items-center">
               <div className="relative group w-48 h-48 border-2 border-dashed border-gray-200 rounded-2xl flex items-center justify-center overflow-hidden bg-gray-50 mb-4 transition-all hover:border-[#009966]">
                 {logoPreview ? (
                   <img src={logoPreview} alt="Logo Preview" className="w-full h-full object-contain" />
@@ -332,10 +331,10 @@ export default function SystemSettingsPage() {
           </Card>
 
           <Card className="border-none shadow-sm bg-[#2F3E46] text-white overflow-hidden">
-            <CardHeader className="border-b border-white/10">
+            <CardHeader className="border-b border-white/10 pb-1">
               <CardTitle className="text-lg">System Status</CardTitle>
             </CardHeader>
-            <CardContent className="p-6 space-y-4">
+            <CardContent className="px-6 py-2 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                 <span className="text-sm font-medium opacity-80">ERP Engine Online</span>

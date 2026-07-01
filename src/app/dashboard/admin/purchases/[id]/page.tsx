@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import dayjs from "dayjs";
 import { formatNepaliCurrency } from "@/utils/formatNepaliCurrency";
 import PurchasePaymentDrawer from "@/components/purchases/PurchasePaymentDrawer";
+import PurchaseReturnDialog from "@/components/purchases/PurchaseReturnDialog";
 import { toast } from "sonner";
 import { 
   RotateCcw, 
@@ -39,6 +40,7 @@ export default function PurchaseDetailPage() {
   const [systemSettings, setSystemSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [openPayment, setOpenPayment] = useState(false);
+  const [isReturnOpen, setIsReturnOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
   const [reverseModalOpen, setReverseModalOpen] = useState(false);
@@ -219,8 +221,12 @@ export default function PurchaseDetailPage() {
   const nepaliDate = purchaseData.invoice_date ? new NepaliDate(new Date(purchaseData.invoice_date)).format("YYYY-MM-DD") : "—";
   const invoiceTime = purchaseData.created_at ? dayjs(purchaseData.created_at).format("HH:mm A") : dayjs().format("HH:mm A");
 
+  const returnedAmount = Number(summary.returned_amount || 0);
+  const finalPayable = Number(summary.final_payable ?? totalAmount);
+  const returns = purchaseData.returns || [];
+
   return (
-    <div className="space-y-6 max-w-[1000px] mx-auto pb-12" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="space-y-6 max-w-[1000px] mx-auto pb-12" style={{ fontFamily: "var(--font-outfit), sans-serif" }}>
 
       {/* ================= TOP NAVIGATION & ACTIONS ================= */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
@@ -233,6 +239,15 @@ export default function PurchaseDetailPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={() => setIsReturnOpen(true)}
+            className="rounded-xl border-gray-200 hover:border-orange-500 hover:text-orange-500 group h-10 px-6 font-bold"
+          >
+            <RotateCcw size={18} className="mr-2 text-gray-400 group-hover:text-orange-500" />
+            Record Return
+          </Button>
+
           <Button 
             variant="outline" 
             onClick={() => window.open(`/dashboard/admin/purchases/${id}/print`, "_blank")}
@@ -489,6 +504,70 @@ export default function PurchaseDetailPage() {
           </table>
         </div>
 
+        {/* ======== RETURNS SECTION ======== */}
+        {returns.length > 0 && (
+          <div className="mb-8">
+            <div className="overflow-hidden rounded-2xl border border-orange-200">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-orange-50">
+                    <th className="px-6 py-3 text-left font-black text-[10px] uppercase tracking-wider text-orange-800" colSpan={5}>
+                      Debit Notes / Returns
+                    </th>
+                    <th className="px-6 py-3 text-right font-black text-[10px] uppercase tracking-wider text-orange-800">
+                      Items
+                    </th>
+                    <th className="px-6 py-3 text-right font-black text-[10px] uppercase tracking-wider text-orange-800">
+                      Amount
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {returns.map((ret: any) => (
+                    <tr key={ret.id} className="border-t border-orange-100">
+                      <td className="px-6 py-3 font-black text-gray-900" colSpan={5}>
+                        <div>{ret.return_no}</div>
+                        <div className="text-[10px] text-gray-400 font-medium">
+                          {ret.return_date ? dayjs(ret.return_date).format("YYYY-MM-DD") : "—"}
+                          {ret.remarks && <span className="ml-2 italic text-orange-600 font-bold">({ret.remarks})</span>}
+                        </div>
+                      </td>
+                      <td className="px-6 py-3 text-right text-[10px] text-orange-700 font-bold">
+                        {ret.items?.map((ri: any) => (
+                          <div key={ri.id}>
+                            {ri.product?.name}: {Math.round(Number(ri.quantity))} Reg + {Math.round(Number(ri.free_qty))} {ri.unit?.name || "Unit"} (Free)
+                          </div>
+                        ))}
+                      </td>
+                      <td className="px-6 py-3 text-right font-bold text-red-600">
+                        ({formatNepaliCurrency(ret.total_amount)})
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-orange-50 border-t border-orange-200">
+                    <td colSpan={6} className="px-6 py-3 text-right uppercase text-[10px] tracking-wider text-orange-800 font-black">
+                      Total Returns
+                    </td>
+                    <td className="px-6 py-3 text-right font-black text-red-700">
+                      ({formatNepaliCurrency(returnedAmount)})
+                    </td>
+                  </tr>
+                  <tr className="bg-emerald-900 text-white">
+                    <td colSpan={6} className="px-6 py-5 text-right uppercase text-sm tracking-[0.3em] font-black">
+                      Final Net Payable
+                    </td>
+                    <td className="px-6 py-5 text-right text-2xl font-black tracking-tighter">
+                      {formatNepaliCurrency(finalPayable)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* ======== AMOUNT IN WORDS ======== */}
         <div className="border-4 border-gray-900 px-8 py-6 mb-12 bg-gray-50 rounded-3xl flex items-center justify-between shadow-sm">
            <div className="flex items-center gap-4">
@@ -498,7 +577,7 @@ export default function PurchaseDetailPage() {
               <div>
                  <span className="font-black text-[10px] uppercase text-gray-400 block mb-1 tracking-widest">Amount in Words</span>
                  <span className="text-xl font-black italic text-gray-900">
-                    Rupees {numberToWords(totalAmount)}.
+                    Rupees {numberToWords(finalPayable)}.
                  </span>
               </div>
            </div>
@@ -704,6 +783,15 @@ export default function PurchaseDetailPage() {
         purchase={purchase}
         outstandingAmount={Math.abs(outstandingBalance)}
         onSuccess={() => {
+          api.get(`/purchases/${purchase.id}`).then(res => setData(res.data));
+        }}
+      />
+
+      <PurchaseReturnDialog
+        open={isReturnOpen}
+        onClose={() => setIsReturnOpen(false)}
+        purchase={purchase}
+        refresh={() => {
           api.get(`/purchases/${purchase.id}`).then(res => setData(res.data));
         }}
       />

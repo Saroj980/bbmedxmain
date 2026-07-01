@@ -24,8 +24,10 @@ import {
   WalletCards,
   ArrowLeft,
   ChevronRight,
-  Info
+  Info,
+  RotateCcw
 } from "lucide-react";
+import SalesReturnDialog from "@/components/sales/SalesReturnDialog";
 
 export default function SaleDetailPage() {
   const { id } = useParams();
@@ -34,8 +36,10 @@ export default function SaleDetailPage() {
   const [data, setData] = useState<any>(null);
   const [systemSettings, setSystemSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isReturnOpen, setIsReturnOpen] = useState(false);
 
-  useEffect(() => {
+  const loadData = () => {
+    setLoading(true);
     Promise.all([
       api.get(`/sales/${id}`),
       api.get("/system-settings"),
@@ -45,6 +49,10 @@ export default function SaleDetailPage() {
         setSystemSettings(settingsRes.data);
       })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadData();
   }, [id]);
 
   if (loading) return (
@@ -59,6 +67,8 @@ export default function SaleDetailPage() {
   const customer = sale.customer || {};
 
   const grossAmount = Number(summary.gross_amount || 0);
+  const freeCarrierCost = Number(summary.free_carrier_cost || 0);
+  const grossSalesValue = Math.max(0, grossAmount - freeCarrierCost);
   const taxableAmount = items.reduce((sum: number, i: any) => i.vat_included ? sum + Number(i.inventory_value || 0) : sum, 0);
   const vatAmount = Number(summary.vat_amount || 0);
   const discountAmount = Number(summary.discount_amount || 0);
@@ -67,10 +77,15 @@ export default function SaleDetailPage() {
 
   const nepaliDate = sale.invoice_date ? new NepaliDate(new Date(sale.invoice_date)).format("YYYY-MM-DD") : "—";
   const invoiceTime = sale.created_at ? dayjs(sale.created_at).format("HH:mm A") : dayjs().format("HH:mm A");
-  const overallDiscountPercent = grossAmount > 0 ? (discountAmount / grossAmount) * 100 : 0;
+  const overallDiscountPercent = grossSalesValue > 0 ? (discountAmount / grossSalesValue) * 100 : 0;
+
+  /* ---- Returns ---- */
+  const returnedAmount = Number(summary.returned_amount || 0);
+  const finalPayable = Number(summary.final_payable ?? totalAmount);
+  const returns = sale.returns || [];
 
   return (
-    <div className="space-y-6 max-w-[1000px] mx-auto pb-12" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="space-y-6 max-w-[1000px] mx-auto pb-12" style={{ fontFamily: "var(--font-outfit), sans-serif" }}>
 
       {/* ================= TOP NAVIGATION & ACTIONS ================= */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
@@ -83,6 +98,16 @@ export default function SaleDetailPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {sale.status !== "cancelled" && (
+            <Button
+              onClick={() => setIsReturnOpen(true)}
+              className="bg-orange-600 hover:bg-orange-700 text-white rounded-xl px-6 h-10 shadow-md shadow-orange-100 font-bold"
+            >
+              <RotateCcw size={18} className="mr-2" />
+              Sales Return
+            </Button>
+          )}
+
           <Button 
             variant="outline" 
             onClick={() => window.open(`/dashboard/admin/sales/${sale.id}/print`, "_blank")}
@@ -157,7 +182,7 @@ export default function SaleDetailPage() {
           </div>
           <div className="relative flex justify-center">
             <span className="px-10 py-2.5 bg-white border-2 border-gray-900 text-lg font-black uppercase tracking-[0.3em] text-gray-900 rounded-full shadow-sm">
-              Tax Invoice
+              Sales Invoice
             </span>
           </div>
         </div>
@@ -174,11 +199,11 @@ export default function SaleDetailPage() {
             <div className="space-y-1.5 text-sm text-gray-600 font-medium">
                <div className="flex items-center gap-2">
                   <Building2 size={14} className="text-gray-300" />
-                  <span>{customer.address || "Address: —"}</span>
+                  <span>Address: {customer.address || "—"}</span>
                </div>
                <div className="flex items-center gap-2">
                   <Hash size={14} className="text-gray-300" />
-                  <span>PAN/VAT No: <span className="font-black text-gray-900 ml-1">{customer.pan_no || "—"}</span></span>
+                  <span>{customer.is_vat_registered ? "VAT No:" : "PAN No:"} <span className="font-black text-gray-900 ml-1">{customer.pan_no || "—"}</span></span>
                </div>
                <div className="flex items-center gap-2">
                   <Phone size={14} className="text-gray-300" />
@@ -287,28 +312,42 @@ export default function SaleDetailPage() {
             <tfoot className="bg-gray-50/50">
               <tr className="font-bold border-t border-gray-100">
                 <td colSpan={6} className="px-6 py-3 text-right uppercase text-[10px] tracking-widest text-gray-400 font-black">
-                  Gross Total
+                  Gross Sales Value
                 </td>
                 <td className="px-6 py-3 text-right font-bold text-gray-900 border-l border-white">
-                  {formatNepaliCurrency(grossAmount)}
+                  {formatNepaliCurrency(grossSalesValue)}
                 </td>
               </tr>
-              <tr className="font-bold">
-                <td colSpan={6} className="px-6 py-3 text-right uppercase text-[10px] tracking-widest text-gray-900 font-black">
-                  Taxable Amount
-                </td>
-                <td className="px-6 py-3 text-right font-black text-gray-900 border-l border-white">
-                  {formatNepaliCurrency(taxableAmount)}
-                </td>
-              </tr>
-              <tr className="font-bold">
-                <td colSpan={6} className="px-6 py-3 text-right uppercase text-[10px] tracking-widest text-orange-500 font-black">
-                  VAT (13%)
-                </td>
-                <td className="px-6 py-3 text-right font-black text-orange-600 border-l border-white">
-                  {formatNepaliCurrency(vatAmount)}
-                </td>
-              </tr>
+              {freeCarrierCost > 0 && (
+                <tr className="font-bold bg-emerald-50/20 text-emerald-800">
+                  <td colSpan={6} className="px-6 py-3 text-right uppercase text-[10px] tracking-widest font-black">
+                    Carrier Cost on Free Items
+                  </td>
+                  <td className="px-6 py-3 text-right font-bold border-l border-white">
+                    {formatNepaliCurrency(freeCarrierCost)}
+                  </td>
+                </tr>
+              )}
+              {vatAmount > 0 && (
+                <>
+                  <tr className="font-bold">
+                    <td colSpan={6} className="px-6 py-3 text-right uppercase text-[10px] tracking-widest text-gray-900 font-black">
+                      Taxable Amount
+                    </td>
+                    <td className="px-6 py-3 text-right font-black text-gray-900 border-l border-white">
+                      {formatNepaliCurrency(taxableAmount)}
+                    </td>
+                  </tr>
+                  <tr className="font-bold">
+                    <td colSpan={6} className="px-6 py-3 text-right uppercase text-[10px] tracking-widest text-orange-500 font-black">
+                      VAT (13%)
+                    </td>
+                    <td className="px-6 py-3 text-right font-black text-orange-600 border-l border-white">
+                      {formatNepaliCurrency(vatAmount)}
+                    </td>
+                  </tr>
+                </>
+              )}
               <tr className="font-black bg-gray-100">
                 <td colSpan={6} className="px-6 py-4 text-right uppercase text-[11px] tracking-widest text-gray-900">
                    Total Amount
@@ -340,6 +379,70 @@ export default function SaleDetailPage() {
           </table>
         </div>
 
+        {/* ======== RETURNS SECTION ======== */}
+        {returns.length > 0 && (
+          <div className="mb-8">
+            <div className="overflow-hidden rounded-2xl border border-orange-200">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-orange-50">
+                    <th className="px-6 py-3 text-left font-black text-[10px] uppercase tracking-wider text-orange-800" colSpan={5}>
+                      Credit Notes / Returns
+                    </th>
+                    <th className="px-6 py-3 text-right font-black text-[10px] uppercase tracking-wider text-orange-800">
+                      Items
+                    </th>
+                    <th className="px-6 py-3 text-right font-black text-[10px] uppercase tracking-wider text-orange-800">
+                      Amount
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {returns.map((ret: any) => (
+                    <tr key={ret.id} className="border-t border-orange-100">
+                      <td className="px-6 py-3 font-black text-gray-900" colSpan={5}>
+                        <div>{ret.return_no}</div>
+                        <div className="text-[10px] text-gray-400 font-medium">
+                          {ret.return_date ? dayjs(ret.return_date).format("YYYY-MM-DD") : "—"}
+                          {ret.remarks && <span className="ml-2 italic">{ret.remarks}</span>}
+                        </div>
+                      </td>
+                      <td className="px-6 py-3 text-right text-[10px] text-orange-700 font-bold">
+                        {ret.items?.map((ri: any) => (
+                          <div key={ri.id}>
+                            {ri.product?.name}: {Math.round(Number(ri.quantity))} Reg + {Math.round(Number(ri.free_qty))} Free
+                          </div>
+                        ))}
+                      </td>
+                      <td className="px-6 py-3 text-right font-bold text-red-600">
+                        ({formatNepaliCurrency(ret.total_amount)})
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-orange-50 border-t border-orange-200">
+                    <td colSpan={6} className="px-6 py-3 text-right uppercase text-[10px] tracking-wider text-orange-800 font-black">
+                      Total Returns
+                    </td>
+                    <td className="px-6 py-3 text-right font-black text-red-700">
+                      ({formatNepaliCurrency(returnedAmount)})
+                    </td>
+                  </tr>
+                  <tr className="bg-emerald-900 text-white">
+                    <td colSpan={6} className="px-6 py-5 text-right uppercase text-sm tracking-[0.3em] font-black">
+                      Final Payable
+                    </td>
+                    <td className="px-6 py-5 text-right text-2xl font-black tracking-tighter">
+                      {formatNepaliCurrency(finalPayable)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* ======== AMOUNT IN WORDS ======== */}
         <div className="border-4 border-gray-900 px-8 py-6 mb-12 bg-gray-50 rounded-3xl flex items-center justify-between shadow-sm">
            <div className="flex items-center gap-4">
@@ -347,9 +450,9 @@ export default function SaleDetailPage() {
                  <Info size={24} />
               </div>
               <div>
-                 <span className="font-black text-[10px] uppercase text-gray-400 block mb-1 tracking-widest">Amount in Words</span>
+                 <span className="font-black text-[10px] uppercase text-gray-400 block mb-1 tracking-widest">{returnedAmount > 0 ? "Final Payable in Words" : "Amount in Words"}</span>
                  <span className="text-xl font-black italic text-gray-900">
-                    Rupees {numberToWords(totalAmount)}.
+                    Rupees {numberToWords(returnedAmount > 0 ? finalPayable : totalAmount)}.
                  </span>
               </div>
            </div>
@@ -382,11 +485,18 @@ export default function SaleDetailPage() {
 
         {/* ======== FOOTER ======== */}
         <div className="text-center text-[10px] text-gray-300 mt-20 border-t border-gray-50 pt-6 space-y-1 font-black uppercase tracking-[0.2em]">
-          <p>This is a computer-generated TAX INVOICE. Generated by BBMedx ERP System.</p>
+          <p>This is a computer-generated SALES INVOICE. Generated by BBMedx ERP System.</p>
           <p className="text-[9px] text-gray-200">Session ID: {sale.id} • Printed on {dayjs().format("YYYY-MM-DD HH:mm:ss")}</p>
         </div>
 
       </div>
+
+      <SalesReturnDialog
+        open={isReturnOpen}
+        onClose={() => setIsReturnOpen(false)}
+        sale={sale}
+        refresh={loadData}
+      />
 
     </div>
   );

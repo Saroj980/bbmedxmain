@@ -9,7 +9,7 @@ interface Props {
 
 export default function PrintHeader({ systemSettings, title }: Props) {
   return (
-    <div className="mb-6 font-sans" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="mb-6 font-sans" style={{ fontFamily: "var(--font-outfit), sans-serif" }}>
       <table className="w-full mb-4 border-none border-collapse">
         <tbody>
           <tr>
