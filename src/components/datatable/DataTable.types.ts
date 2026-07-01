@@ -21,5 +21,4 @@ export interface DataTableProps<T> {
   pagination?: PaginationState; 
   getRowClassName?: (row: T) => string | undefined;
   expandedRowRenderer?: (row: T, toggleCollapse: () => void) => React.ReactNode;
-  className?: string;
 }

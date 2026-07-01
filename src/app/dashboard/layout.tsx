@@ -43,7 +43,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             />
           </div>
 
-          <main className="pt-16 p-6 flex-1 overflow-y-auto print:p-0 print:pt-0">
+          <main className="pt-16 pb-16 p-6 flex-1 overflow-y-auto print:p-0 print:pt-0">
 
             <div className="container mx-auto px-4 py-4 print:p-0 print:m-0 print:max-w-none">
 
@@ -52,6 +52,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </SalesDrawerProvider>
             </div>
           </main>
+
+          {/* Fixed Sticky Footer */}
+          <footer className={`fixed bottom-0 right-0 z-30 bg-white border-t border-gray-200 py-3 text-center shadow-[0_-2px_10px_rgba(0,0,0,0.05)] print:hidden transition-all duration-300
+            ${collapsed ? "lg:left-20" : "lg:left-64"} left-0`}
+          >
+            <p className="text-[11px] text-gray-500 font-medium tracking-wide">
+              &copy; {new Date().getFullYear()} BBMedX — Blackboard Nepal Pvt. Ltd.
+            </p>
+          </footer>
         </div>
       </div>
     </AuthGuard>

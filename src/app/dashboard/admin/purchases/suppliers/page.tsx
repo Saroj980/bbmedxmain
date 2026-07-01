@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { DataTable } from "@/components/datatable/DataTable";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
@@ -9,6 +10,7 @@ import PartyLedgerForm from "@/components/parties/PartyLedgerForm";
 import { supplierColumns } from "./supplier-columns";
 
 export default function SuppliersPage() {
+  const router = useRouter();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -52,7 +54,7 @@ export default function SuppliersPage() {
     );
   }, [data, searchQuery]);
 
-  const columns = useMemo(() => supplierColumns(handleEdit), []);
+  const columns = useMemo(() => supplierColumns(handleEdit, router), [router]);
 
   return (
     <div className="space-y-6">

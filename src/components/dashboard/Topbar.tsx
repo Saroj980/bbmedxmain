@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Menu, Bell, LogOut, User, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useUserStore } from "@/store/userStore";
+import { useFirmInfo } from "@/hooks/useFirmInfo";
+import NepaliDateHeader from "./NepaliDateHeader";
 import { cn } from "@/lib/utils";
 
 interface TopbarProps {
@@ -14,6 +16,7 @@ interface TopbarProps {
 export default function Topbar({ onMenuClick, collapsed }: TopbarProps) {
   const router = useRouter();
   const [openProfile, setOpenProfile] = useState(false);
+  const firmInfo = useFirmInfo();
 
   const user = useUserStore((s) => s.user);
   const logout = useUserStore((s) => s.logout);
@@ -42,12 +45,17 @@ export default function Topbar({ onMenuClick, collapsed }: TopbarProps) {
       </button>
 
       {/* BRAND / TITLE */}
-      <div className="hidden lg:flex text-lg font-semibold text-gray-800 select-none">
-        {/* Dashboard */}
+      <div className="hidden lg:flex text-lg font-semibold text-gray-800 select-none items-center gap-2">
+        {firmInfo ? firmInfo.firm_name : "BBMedX Dashboard"}
       </div>
 
       {/* RIGHT SECTION */}
       <div className="flex items-center gap-4">
+        {/* Nepali Date Header */}
+        <div className="hidden sm:block">
+          <NepaliDateHeader />
+        </div>
+
         {/* Notification (future use) */}
         <button className="relative p-2 rounded-full hover:bg-gray-100 transition cursor-pointer">
           <Bell size={22} className="text-gray-700" />

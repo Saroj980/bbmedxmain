@@ -84,7 +84,6 @@ export default function FinancialViewTab({ accounts, loading }: { accounts: any[
                 disablePagination
                 pageSize={1000}
                 // Remove inner border
-                className="border-0"
               />
             </div>
           </div>

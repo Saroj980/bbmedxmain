@@ -28,6 +28,8 @@ export default function PartyLedgerForm({
     opening_balance: 0,
     opening_balance_type: "receivable",
     is_active: true,
+    pan_no: "",
+    is_vat_registered: false,
   });
 
   /* ---------------- Load Edit Data ---------------- */
@@ -46,6 +48,8 @@ export default function PartyLedgerForm({
           opening_balance: p.opening_balance ?? 0,
           opening_balance_type: p.opening_balance_type ?? "receivable",
           is_active: p.is_active ?? true,
+          pan_no: p.pan_no ?? "",
+          is_vat_registered: !!p.is_vat_registered,
         });
       });
     }
@@ -61,6 +65,8 @@ export default function PartyLedgerForm({
         opening_balance: 0,
         opening_balance_type: defaultIsSupplier ? "payable" : "receivable",
         is_active: true,
+        pan_no: "",
+        is_vat_registered: false,
       });
     }
   }, [open, editData]);
@@ -97,6 +103,8 @@ export default function PartyLedgerForm({
       opening_balance: form.opening_balance,
       opening_balance_type: form.opening_balance_type,
       is_active: form.is_active,
+      pan_no: form.pan_no,
+      is_vat_registered: form.is_vat_registered,
     };
 
     try {
@@ -266,6 +274,34 @@ export default function PartyLedgerForm({
                 setForm({ ...form, address: e.target.value })
               }
             />
+          </div>
+
+          {/* PAN & VAT */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700">
+                PAN Number
+              </label>
+              <Input
+                className="mt-1"
+                placeholder="e.g. 123456789"
+                value={form.pan_no}
+                onChange={(e) =>
+                  setForm({ ...form, pan_no: e.target.value })
+                }
+              />
+            </div>
+
+            <div className="flex items-end pb-2">
+              <Checkbox
+                checked={form.is_vat_registered}
+                onChange={(e) =>
+                  setForm({ ...form, is_vat_registered: e.target.checked })
+                }
+              >
+                VAT Registered?
+              </Checkbox>
+            </div>
           </div>
 
           

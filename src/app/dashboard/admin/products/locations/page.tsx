@@ -181,6 +181,7 @@ export default function LocationsPage() {
         <Table 
           loading={loadingProducts}
           dataSource={locationProducts}
+          rowKey="id"
           size="small"
           pagination={{ pageSize: 10 }}
           className="erp-table mt-4"

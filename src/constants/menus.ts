@@ -10,6 +10,10 @@ import {
   FileText,
   History,
   Settings,
+  Building2,
+  CreditCard,
+  Clock,
+  Database
 } from "lucide-react";
 
 export const sidebarMenu = [
@@ -183,3 +187,5 @@ export const sidebarMenu = [
     ],
   },
 ];
+
+

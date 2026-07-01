@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { 
   Package, 
   ShoppingCart, 
@@ -20,7 +21,7 @@ import FinancialOverview from "@/components/dashboard/FinancialOverview";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
-import NepaliDateHeader from "@/components/dashboard/NepaliDateHeader";
+
 import PerformanceMatrix from "@/components/dashboard/PerformanceMatrix";
 import FinancialTrend from "@/components/dashboard/FinancialTrend";
 import MonthlyComparisonMatrix from "@/components/dashboard/MonthlyComparisonMatrix";
@@ -74,11 +75,18 @@ export default function AdminDashboard() {
         </div>
         
         <div className="flex flex-wrap items-center gap-4">
-          <NepaliDateHeader />
+
           <div className="h-8 w-px bg-slate-200 hidden md:block" />
-          <Button className="bg-slate-900 hover:bg-black text-white px-6 shadow-xl shadow-slate-200 rounded-xl transition-all hover:scale-105 active:scale-95">
-            <ShoppingCart className="mr-2 h-4 w-4" /> New Sale
-          </Button>
+          <Link href="/dashboard/admin/purchases/create">
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 shadow-xl shadow-emerald-200/50 rounded-xl transition-all hover:scale-105 active:scale-95">
+              <Package className="mr-2 h-4 w-4" /> New Purchase
+            </Button>
+          </Link>
+          <Link href="/dashboard/admin/sales/create">
+            <Button className="bg-slate-900 hover:bg-black text-white px-6 shadow-xl shadow-slate-200 rounded-xl transition-all hover:scale-105 active:scale-95">
+              <ShoppingCart className="mr-2 h-4 w-4" /> New Sale
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -89,7 +97,7 @@ export default function AdminDashboard() {
         <QuickButton icon={FileText} label="Billing" href="/dashboard/admin/sales/create" color="bg-indigo-50 text-indigo-600" />
         <QuickButton icon={ShoppingCart} label="Purchase" href="/dashboard/admin/purchases/create" color="bg-amber-50 text-amber-600" />
         <QuickButton icon={TrendingUp} label="Vouchers" href="/dashboard/admin/vouchers/all" color="bg-rose-50 text-rose-600" />
-        <QuickButton icon={Settings} label="Config" href="/dashboard/admin/settings" color="bg-slate-100 text-slate-600" />
+        <QuickButton icon={Settings} label="Config" href="/dashboard/admin/settings/system-settings" color="bg-slate-100 text-slate-600" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 mt-4">

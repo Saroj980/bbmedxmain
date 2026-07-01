@@ -173,6 +173,7 @@ export default function CategoriesPage() {
         <Table 
           loading={loadingProducts}
           dataSource={categoryProducts}
+          rowKey="id"
           size="small"
           pagination={{ pageSize: 10 }}
           className="erp-table mt-4"

@@ -28,7 +28,6 @@ export function DataTable<TData>({
   getRowClassName,
   expandedRowRenderer,
   disableSearch = false,
-  className,
 }: DataTableProps<TData>) {
   const [globalFilter, setGlobalFilter] = useState("");
 
@@ -60,7 +59,7 @@ export function DataTable<TData>({
 
 
   return (
-    <div className={`relative bg-white border shadow-md rounded-xl overflow-hidden ${className || ""}`}>
+    <div className="relative bg-white border shadow-md rounded-xl overflow-hidden">
 
       {/* Loading Overlay */}
       {loading && (

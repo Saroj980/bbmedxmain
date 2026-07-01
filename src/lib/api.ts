@@ -1,20 +1,16 @@
 import axios from "axios";
 import { useUserStore } from "@/store/userStore";
 
-const BASE_URL = "/api";
+const PROD_API_URL = "https://westernpharmacy.com.np";
+const DEV_URL = "";
+const BASE_URL = process.env.NODE_ENV === "production" ? PROD_API_URL : DEV_URL;
 
 export const api = axios.create({
-  baseURL: BASE_URL,
+  baseURL: `${BASE_URL}/api`,
   headers: { Accept: "application/json" },
+  withCredentials: true,
 });
-
-// Initialize Authorization header from localStorage (if present)
-if (typeof window !== "undefined") {
-  const saved = localStorage.getItem("bbmedx_token");
-  if (saved) api.defaults.headers.common.Authorization = `Bearer ${saved}`;
-}
-
-// Attach access token from store when available
+// Attach access token
 api.interceptors.request.use((config) => {
   const token = useUserStore.getState().token;
   if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -42,7 +38,7 @@ api.interceptors.response.use(
       
       try {
         // Refresh access token
-        const res = await axios.post(`${BASE_URL}/refresh-token`, {
+        const res = await axios.post(`${BASE_URL}/api/refresh-token`, {
           refresh_token: refreshToken,
         });
 

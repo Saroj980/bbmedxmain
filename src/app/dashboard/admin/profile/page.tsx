@@ -5,7 +5,6 @@ import { useUserStore } from "@/store/userStore";
 import { api } from "@/lib/api";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { User, Lock, Save, ShieldCheck, Mail, Briefcase, Check } from "lucide-react";
-import { notification } from "antd";
 import { toast } from "sonner";
 
 export default function ProfilePage() {

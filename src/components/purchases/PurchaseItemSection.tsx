@@ -100,6 +100,7 @@ export default function PurchaseItemsSection({
       profit_margin: null,
       vat_included: false,
       auto_calculate: true,
+      include_cc: false,
     });
     setIsModalOpen(true);
   };
@@ -133,10 +134,16 @@ export default function PurchaseItemsSection({
     const free = Number(editingRow.free_qty) || 0;
     const carrier = Number(editingRow.carrier_cost) || 0;
     
-    const adjustedCost = (qty + free) > 0 ? ((qty * cost) + carrier) / (qty + free) : cost;
+    const baseAdjusted = (qty + free) > 0 ? ((qty * cost) + carrier) / (qty + free) : cost;
+    const rPct = Number(marginSettings.retail_margin) || 16;
+    const dPct = Number(marginSettings.distributor_margin) || 10;
+    const fPct = Number(marginSettings.firm_margin) || 7;
+    const ccAmount = editingRow.include_cc ? (Number(editingRow.mrp || 0) / (1 + rPct / 100) / (1 + dPct / 100) / (1 + fPct / 100)) * 0.07 : 0;
+    const adjustedCost = baseAdjusted + ccAmount;
     
     const rowToSave = {
       ...editingRow,
+      profit_margin: 16,
       adjusted_unit_cost: Number(adjustedCost.toFixed(2))
     };
 
@@ -173,9 +180,10 @@ export default function PurchaseItemsSection({
     [value]
   );
 
-  const calculateSellingPrice = (cost: number, margin?: number | null) => {
-    if (!margin) return 0;
-    return Number((cost * (1 + margin / 100)).toFixed(2));
+  const calculateSellingPrice = (mrp: number) => {
+    if (!mrp) return 0;
+    const rPct = Number(marginSettings.retail_margin) || 16;
+    return Number((mrp / (1 + rPct / 100)).toFixed(2));
   };
 
   const calculateCarrierCost = (costPrice: number, freeQty: number) => {
@@ -188,7 +196,15 @@ export default function PurchaseItemsSection({
   const onProductSelect = async (productId: number) => {
     if (!editingRow) return;
     const avail = await fetchAvailability(productId, editingRow.id);
-    setEditingRow({ ...editingRow, product_id: productId });
+    const defaultUnit = avail?.units?.find((u: any) => u.level === 1) || avail?.units?.[0];
+    setEditingRow((prev: any) => {
+      if (!prev) return null;
+      return { 
+        ...prev, 
+        product_id: productId,
+        quantity_unit_id: defaultUnit ? defaultUnit.unit_id : null
+      };
+    });
   };
 
   const handleBatchSelect = (batchNo: string) => {
@@ -208,6 +224,7 @@ export default function PurchaseItemsSection({
         profit_margin: batch.profit_margin ?? null,
         vat_included: batch.vat_included ?? false,
         auto_calculate: batch.is_auto_calculated,
+        quantity_unit_id: batch.unit_id || editingRow.quantity_unit_id,
       });
     } else {
       setEditingRow({
@@ -366,8 +383,8 @@ export default function PurchaseItemsSection({
       {/* Add/Edit Modal */}
       <Modal
         title={
-            <div className="flex items-center gap-2 text-[#009966]">
-                <Plus size={18} />
+            <div className="flex items-center gap-2 text-emerald-700 text-lg font-bold border-b pb-3 mb-1">
+                <Plus size={20} className="bg-emerald-50 p-1 rounded-lg text-emerald-700" />
                 <span>{editingRow?.id && value.find(r => r.id === editingRow.id) ? "Edit Purchase Item" : "Add Purchase Item"}</span>
             </div>
         }
@@ -379,137 +396,155 @@ export default function PurchaseItemsSection({
         okText="Confirm & Add"
         okButtonProps={{ 
             style: { backgroundColor: 'var(--primary)', borderColor: 'var(--primary)' },
-            className: "hover:opacity-90 text-white" 
+            className: "hover:opacity-90 text-white font-semibold py-2 px-4 rounded-lg shadow-sm" 
         }}
         cancelButtonProps={{ 
             style: { color: 'var(--primary)', borderColor: 'var(--primary)' },
-            className: "hover:bg-primary/5" 
+            className: "hover:bg-primary/5 font-semibold py-2 px-4 rounded-lg border-gray-200" 
         }}
       >
         {editingRow && (
-          <div className="space-y-6 pt-4">
+          <div className="space-y-6 pt-2">
             {/* Availability Info (If exists) */}
             {availabilityMap[editingRow.id] && (
-              <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 space-y-3">
-                <div className="flex justify-between items-center border-b border-primary/10 pb-2">
-                    <h5 className="text-xs font-bold text-primary uppercase tracking-wider">Current Availability</h5>
-                    <span className="text-xs text-primary/70 font-medium">
+              <div className="bg-emerald-50/40 border border-emerald-100/80 rounded-2xl p-5 space-y-4 shadow-sm">
+                <div className="flex justify-between items-center border-b border-emerald-200/40 pb-2.5">
+                    <h5 className="text-xs font-bold text-emerald-800 uppercase tracking-widest flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Current Availability
+                    </h5>
+                    <span className="text-xs text-emerald-700 font-bold bg-emerald-100/50 px-3 py-1 rounded-full border border-emerald-200/50">
                         Total Stock: {formatNepaliCurrency(availabilityMap[editingRow.id].total_base_qty)}
                     </span>
                 </div>
                 
-                <div className="flex gap-4 flex-wrap">
+                <div className="flex gap-3 flex-wrap">
                     {availabilityMap[editingRow.id].units.map((u: any) => (
-                        <div key={u.unit_id} className="bg-white px-2.5 py-1.5 rounded-lg border border-primary/10 shadow-sm flex items-center gap-2">
-                             <div className="w-2 h-2 rounded-full bg-primary" />
+                        <div key={u.unit_id} className="bg-white px-3.5 py-2 rounded-xl border border-emerald-100/65 shadow-sm flex items-center gap-2">
+                             <div className="w-2 h-2 rounded-full bg-emerald-500" />
                              <span className="text-[11px] font-semibold text-gray-700">{formatNepaliCurrency(u.available)} {u.unit_name}</span>
                         </div>
                     ))}
                 </div>
 
-                <div className="space-y-1.5">
-                    <p className="text-[10px] text-primary/60 font-bold uppercase">FEFO Batches</p>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {availabilityMap[editingRow.id].batches.map((b: any) => (
-                            <div key={b.id} className="bg-white p-2 rounded-lg border border-primary/5 text-[10px] flex justify-between">
-                                <span className="text-gray-600">{b.batch_no}</span>
-                                <span className="font-bold text-primary">{formatNepaliCurrency(b.current_stock)}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                {availabilityMap[editingRow.id].batches.length > 0 && (
+                  <div className="space-y-2">
+                      <p className="text-[10px] text-emerald-800/60 font-black uppercase tracking-wider">FEFO Batches in Stock</p>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
+                          {availabilityMap[editingRow.id].batches.map((b: any) => (
+                              <div key={b.id} className="bg-white p-2.5 rounded-xl border border-emerald-100/35 text-[10px] flex justify-between shadow-sm">
+                                  <span className="text-gray-600 font-medium">{b.batch_no}</span>
+                                  <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100/50">{formatNepaliCurrency(b.current_stock)}</span>
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Row 1: Product & Batch */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold text-gray-700 uppercase tracking-tight">Product</label>
-                    <button 
-                        type="button"
-                        onClick={() => setQuickAddModalOpen(true)}
-                        className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1"
-                    >
-                        <Plus size={10} /> New Product
-                    </button>
+            {/* Section 1: Product Identification */}
+            <div className="border border-gray-100 rounded-2xl p-5 bg-white shadow-sm space-y-5">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-xs">1</span>
+                <h4 className="text-xs font-bold text-gray-700 uppercase tracking-widest">Product Details</h4>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                      <label className="text-xs font-bold text-gray-700 uppercase tracking-tight">Product</label>
+                      <button 
+                          type="button"
+                          onClick={() => setQuickAddModalOpen(true)}
+                          className="text-[10px] font-black text-emerald-600 hover:text-emerald-700 flex items-center gap-1 border border-emerald-200/50 bg-emerald-50/50 px-2 py-0.5 rounded-md transition-all"
+                      >
+                          <Plus size={10} /> New Product
+                      </button>
+                  </div>
+                  <Select
+                    showSearch
+                    allowClear
+                    className="w-full h-10"
+                    placeholder="Choose a product..."
+                    optionFilterProp="label"
+                    value={editingRow.product_id ?? undefined}
+                    onChange={onProductSelect}
+                    options={products.map((p) => ({
+                      value: p.id,
+                      label: p.name,
+                    }))}
+                  />
                 </div>
-                <Select
-                  showSearch
-                  allowClear
-                  className="w-full"
-                  placeholder="Choose a product..."
-                  optionFilterProp="label"
-                  value={editingRow.product_id ?? undefined}
-                  onChange={onProductSelect}
-                  options={products.map((p) => ({
-                    value: p.id,
-                    label: p.name,
-                  }))}
-                />
-              </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700 uppercase tracking-tight">Batch No / Selector</label>
-                <Select
-                  showSearch
-                  mode="tags"
-                  className="w-full"
-                  placeholder="Enter or select batch"
-                  value={editingRow.batch_no ? [editingRow.batch_no] : []}
-                  onChange={(vals) => handleBatchSelect(vals[vals.length - 1])}
-                  options={(availabilityMap[editingRow.id]?.batches || []).map((b: any) => ({
-                    value: b.batch_no,
-                    label: `${b.batch_no} (Exp: ${formatDate(b.expiry_date)})`,
-                  }))}
-                />
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 uppercase tracking-tight">Batch No / Selector</label>
+                  <Select
+                    showSearch
+                    mode="tags"
+                    className="w-full"
+                    placeholder="Enter or select batch"
+                    value={editingRow.batch_no ? [editingRow.batch_no] : []}
+                    onChange={(vals) => handleBatchSelect(vals[vals.length - 1])}
+                    options={(availabilityMap[editingRow.id]?.batches || []).map((b: any) => ({
+                      value: b.batch_no,
+                      label: `${b.batch_no} (Exp: ${formatDate(b.expiry_date)})`,
+                    }))}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 uppercase tracking-tight">HS Code</label>
+                  <Input
+                    placeholder="e.g. 3004.90.29"
+                    className="h-10"
+                    value={editingRow.hs_code ?? ""}
+                    onChange={(e) => setEditingRow({ ...editingRow, hs_code: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 uppercase tracking-tight">Physical Storage Location</label>
+                  <TreeSelect
+                    treeData={locations}
+                    value={editingRow.location_id ?? undefined}
+                    placeholder="Select warehouse/rack/shelf"
+                    className="w-full h-10"
+                    onChange={(v) => setEditingRow({...editingRow, location_id: v ? Number(v) : null})}
+                  />
+                </div>
               </div>
             </div>
 
-            {/* HS Code */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-700 uppercase tracking-tight">HS Code</label>
-              <Input
-                placeholder="e.g. 3004.90.29"
-                value={editingRow.hs_code ?? ""}
-                onChange={(e) => setEditingRow({ ...editingRow, hs_code: e.target.value })}
-              />
-            </div>
-
-            {/* Location */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-700 uppercase tracking-tight">Physical Storage Location</label>
-              <TreeSelect
-                treeData={locations}
-                value={editingRow.location_id ?? undefined}
-                placeholder="Select warehouse/rack/shelf"
-                className="w-full h-10"
-                onChange={(v) => setEditingRow({...editingRow, location_id: v ? Number(v) : null})}
-              />
-            </div>
-
-            {/* Expiry Settings */}
-            <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-4">
-              <div className="flex items-center gap-4">
-                <Checkbox
-                  checked={editingRow.expiry_mode === "date"}
-                  onChange={() => setEditingRow({ ...editingRow, expiry_mode: "date", shelf_life_value: null, shelf_life_unit: null })}
-                >
-                  <span className="text-xs font-semibold">Standard Expiry Date</span>
-                </Checkbox>
-                <Checkbox
-                  checked={editingRow.expiry_mode === "shelf_life"}
-                  onChange={() => setEditingRow({ ...editingRow, expiry_mode: "shelf_life", expiry_date: null })}
-                >
-                  <span className="text-xs font-semibold">Shelf Life Calculation</span>
-                </Checkbox>
+            {/* Section 2: Expiry Settings */}
+            <div className="bg-blue-50/30 border border-blue-100/50 rounded-2xl p-5 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-xs">2</span>
+                  <h4 className="text-xs font-bold text-blue-800 uppercase tracking-widest">Expiry & Shelf Life</h4>
+                </div>
+                <div className="flex items-center gap-4">
+                  <Checkbox
+                    checked={editingRow.expiry_mode === "date"}
+                    onChange={() => setEditingRow({ ...editingRow, expiry_mode: "date", shelf_life_value: null, shelf_life_unit: null })}
+                    className="accent-blue-600"
+                  >
+                    <span className="text-xs font-semibold text-blue-900">Standard Date</span>
+                  </Checkbox>
+                  <Checkbox
+                    checked={editingRow.expiry_mode === "shelf_life"}
+                    onChange={() => setEditingRow({ ...editingRow, expiry_mode: "shelf_life", expiry_date: null })}
+                    className="accent-blue-600"
+                  >
+                    <span className="text-xs font-semibold text-blue-900">Shelf Life Calculation</span>
+                  </Checkbox>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-gray-500 uppercase">Manufactured Date</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+                 <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Manufactured Date</label>
                     <DatePicker
-                      className="w-full"
+                      className="w-full h-10"
                       format="YYYY-MM-DD"
                       value={editingRow.manufactured_date ? dayjs(editingRow.manufactured_date) : null}
                       onChange={(d) => setEditingRow({ ...editingRow, manufactured_date: d ? d.format("YYYY-MM-DD") : null })}
@@ -517,29 +552,30 @@ export default function PurchaseItemsSection({
                  </div>
 
                  {editingRow.expiry_mode === "date" ? (
-                   <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase">Expiry Date</label>
+                   <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Expiry Date</label>
                       <DatePicker
-                        className="w-full"
+                        className="w-full h-10"
                         format="YYYY-MM-DD"
                         value={editingRow.expiry_date ? dayjs(editingRow.expiry_date) : null}
                         onChange={(d) => setEditingRow({ ...editingRow, expiry_date: d ? d.format("YYYY-MM-DD") : null })}
                       />
                    </div>
                  ) : (
-                   <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-gray-500 uppercase">Life Value</label>
+                   <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Life Value</label>
                         <Input
                           type="number"
+                          className="h-10"
                           value={editingRow.shelf_life_value ?? ""}
                           onChange={(e) => setEditingRow({ ...editingRow, shelf_life_value: Number(e.target.value) })}
                         />
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-gray-500 uppercase">Unit</label>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Unit</label>
                         <select
-                          className="w-full border border-primary/20 rounded h-9 text-xs px-2 focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+                          className="w-full border border-gray-200 rounded-md h-10 text-xs px-3 focus:ring-1 focus:ring-primary focus:border-primary outline-none bg-white font-medium"
                           value={editingRow.shelf_life_unit ?? ""}
                           onChange={(e) => setEditingRow({ ...editingRow, shelf_life_unit: e.target.value })}
                         >
@@ -554,178 +590,228 @@ export default function PurchaseItemsSection({
               </div>
               
               {resolveExpiryDate(editingRow) && (
-                  <p className="text-[11px] text-primary font-medium">
+                  <div className="bg-blue-100/50 border border-blue-200/40 rounded-xl px-4 py-2 text-xs font-bold text-blue-800 inline-block">
                       Resolved Expiry: {dayjs(resolveExpiryDate(editingRow)).format("YYYY-MM-DD")}
-                  </p>
+                  </div>
               )}
             </div>
 
-            {/* Pricing & Qty */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="space-y-1.5 col-span-2">
-                <label className="text-xs font-bold text-gray-700 uppercase">Purchased Qty</label>
-                <div className="flex gap-2">
+            {/* Section 3: Quantity & Costing Grid */}
+            <div className="border border-gray-100 rounded-2xl p-5 bg-white shadow-sm space-y-5">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-purple-50 text-purple-700 flex items-center justify-center font-bold text-xs">3</span>
+                <h4 className="text-xs font-bold text-gray-700 uppercase tracking-widest">Quantities & Costing</h4>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 uppercase">Purchased Qty</label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      className="flex-1 h-10 font-semibold"
+                      value={editingRow.quantity}
+                      onChange={(e) => setEditingRow({...editingRow, quantity: Number(e.target.value)})}
+                    />
+                    <Select
+                      className="w-32 h-10"
+                      placeholder="Unit"
+                      value={editingRow.quantity_unit_id ?? undefined}
+                      onChange={(v) => setEditingRow({...editingRow, quantity_unit_id: v})}
+                      options={(availabilityMap[editingRow.id]?.units || []).map((u: any) => ({
+                        value: u.unit_id,
+                        label: u.unit_name,
+                      }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 uppercase">Free Qty</label>
                   <Input
                     type="number"
                     min={0}
-                    className="flex-1"
-                    value={editingRow.quantity}
-                    onChange={(e) => setEditingRow({...editingRow, quantity: Number(e.target.value)})}
+                    placeholder="0"
+                    className="w-full h-10 font-semibold"
+                    value={editingRow.free_qty ?? ""}
+                    onChange={(e) => {
+                      const fQty = Number(e.target.value);
+                      const isCcEnabled = fQty > 0 ? editingRow.include_cc : false;
+                      const newCarrierCost = isCcEnabled ? calculateCarrierCost(editingRow.cost_price, fQty) : 0;
+                      setEditingRow({
+                        ...editingRow, 
+                        free_qty: fQty,
+                        include_cc: isCcEnabled,
+                        carrier_cost: newCarrierCost
+                      });
+                    }}
                   />
-                  <Select
-                    className="w-32"
-                    placeholder="Unit"
-                    value={editingRow.quantity_unit_id ?? undefined}
-                    onChange={(v) => setEditingRow({...editingRow, quantity_unit_id: v})}
-                    options={(availabilityMap[editingRow.id]?.units || []).map((u: any) => ({
-                      value: u.unit_id,
-                      label: u.unit_name,
-                    }))}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 uppercase">Cost Price</label>
+                  <Input
+                    type="number"
+                    className="h-10 font-semibold"
+                    value={editingRow.cost_price}
+                    onChange={(e) => {
+                      const cost = Number(e.target.value);
+                      const isCcEnabled = (editingRow.free_qty || 0) > 0 ? editingRow.include_cc : false;
+                      const newCarrierCost = isCcEnabled ? calculateCarrierCost(cost, editingRow.free_qty || 0) : 0;
+                      setEditingRow({
+                        ...editingRow,
+                        cost_price: cost,
+                        include_cc: isCcEnabled,
+                        carrier_cost: newCarrierCost,
+                        selling_price: editingRow.auto_calculate 
+                          ? calculateSellingPrice(editingRow.mrp) 
+                          : editingRow.selling_price
+                      });
+                    }}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 uppercase">Maximum Retail Price (MRP)</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="0"
+                    className="w-full h-10 font-semibold"
+                    value={editingRow.mrp ?? ""}
+                    onChange={(e) => {
+                      const newMrp = Number(e.target.value);
+                      setEditingRow({
+                        ...editingRow, 
+                        mrp: newMrp,
+                        selling_price: editingRow.auto_calculate
+                          ? calculateSellingPrice(newMrp)
+                          : editingRow.selling_price
+                      });
+                    }}
                   />
                 </div>
               </div>
+            </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700 uppercase">Free Qty</label>
-                <Input
-                  type="number"
-                  min={0}
-                  placeholder="0"
-                  className="w-full"
-                  value={editingRow.free_qty ?? ""}
-                  onChange={(e) => {
-                    const fQty = Number(e.target.value);
-                    const newCarrierCost = calculateCarrierCost(editingRow.cost_price, fQty);
-                    setEditingRow({
-                      ...editingRow, 
-                      free_qty: fQty,
-                      carrier_cost: newCarrierCost > 0 ? newCarrierCost : editingRow.carrier_cost
-                    });
-                  }}
-                />
+            {/* Section 4: Taxes & Selling Price Calculation */}
+            <div className="border border-gray-100 rounded-2xl p-5 bg-white shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+              <div className="flex gap-6 flex-wrap">
+                 <Checkbox
+                     checked={editingRow.auto_calculate}
+                     onChange={(e) => setEditingRow({
+                         ...editingRow,
+                         auto_calculate: e.target.checked,
+                         selling_price: e.target.checked ? calculateSellingPrice(editingRow.mrp) : editingRow.selling_price
+                     })}
+                     className="accent-primary"
+                 >
+                     <span className="text-xs font-semibold text-gray-700">Auto Calculate Selling Price</span>
+                 </Checkbox>
+                 <Checkbox
+                     checked={editingRow.vat_included}
+                     onChange={(e) => setEditingRow({ ...editingRow, vat_included: e.target.checked })}
+                     className="accent-primary"
+                 >
+                     <span className="text-xs font-semibold text-gray-700">13% VAT Included</span>
+                 </Checkbox>
+                 <Checkbox
+                     checked={((editingRow.free_qty || 0) > 0) && editingRow.include_cc}
+                     disabled={!((editingRow.free_qty || 0) > 0)}
+                     onChange={(e) => {
+                        const checked = e.target.checked;
+                        setEditingRow({ 
+                          ...editingRow, 
+                          include_cc: checked,
+                          carrier_cost: checked 
+                            ? (editingRow.carrier_cost || calculateCarrierCost(editingRow.cost_price, editingRow.free_qty || 0)) 
+                            : 0 
+                        });
+                      }}
+                     className="accent-primary"
+                 >
+                     <span className="text-xs font-semibold text-gray-700">
+                         Include Carrier Cost
+                     </span>
+                 </Checkbox>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700 uppercase">Cost Price</label>
-                <Input
-                  type="number"
-                  value={editingRow.cost_price}
-                  onChange={(e) => {
-                    const cost = Number(e.target.value);
-                    const newCarrierCost = calculateCarrierCost(cost, editingRow.free_qty || 0);
-                    setEditingRow({
-                      ...editingRow,
-                      cost_price: cost,
-                      carrier_cost: newCarrierCost > 0 ? newCarrierCost : editingRow.carrier_cost,
-                      selling_price: editingRow.auto_calculate 
-                        ? calculateSellingPrice(cost, editingRow.profit_margin) 
-                        : editingRow.selling_price
-                    });
-                  }}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700 uppercase">Margin (%)</label>
-                <Input
-                  type="number"
-                  placeholder="e.g. 25"
-                  value={editingRow.profit_margin ?? ""}
-                  onChange={(e) => {
-                    const m = Number(e.target.value);
-                    setEditingRow({
-                      ...editingRow,
-                      profit_margin: m,
-                      selling_price: editingRow.auto_calculate 
-                        ? calculateSellingPrice(editingRow.cost_price, m) 
-                        : editingRow.selling_price
-                    });
-                  }}
-                />
+              <div className="text-right w-full md:w-auto">
+                 <p className="text-[10px] text-gray-500 uppercase font-black tracking-wider mb-1">Selling Price</p>
+                 <Input 
+                     type="number" 
+                     disabled={editingRow.auto_calculate}
+                     className={`text-right font-black w-full md:w-48 h-10 text-lg ${editingRow.auto_calculate ? "bg-gray-50 border-gray-100 text-gray-500" : "bg-white border-primary/20 text-emerald-600"}`}
+                     value={editingRow.selling_price}
+                     onChange={(e) => setEditingRow({...editingRow, selling_price: Number(e.target.value)})}
+                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center">
-                  <label className="text-xs font-bold text-gray-700 uppercase">Item Carrier Cost (NPR)</label>
-                  <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                    {marginSettings.carrier_cost_percentage}% Margin
-                  </span>
+            {/* Line Summary (Standard Level Dashboard Layout) */}
+            <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-start shadow-sm">
+                {/* Left/Middle Column: Bill Format Summary */}
+                <div className="md:col-span-2 bg-white/40 p-4 rounded-xl border border-emerald-100/50 space-y-3">
+                    <div className="space-y-2 text-sm font-semibold text-emerald-950">
+                        {/* Gross Total Row */}
+                        <div className="flex justify-between items-center py-1">
+                            <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">Gross Total</span>
+                            <span className="font-bold text-gray-800">{formatNepaliCurrency(calcLineBase(editingRow))}</span>
+                        </div>
+                        {/* VAT Row (Shows always, but only calculates if clicked) */}
+                        {/* VAT & Subtotal Rows (Only displayed if VAT is clicked/included) */}
+                        {editingRow.vat_included && (
+                            <>
+                                <div className="flex justify-between items-center py-1 border-t border-emerald-100/30">
+                                    <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">Total VAT (13%)</span>
+                                    <span className="font-bold text-gray-800">{formatNepaliCurrency(calcLineVAT(editingRow))}</span>
+                                </div>
+                                <div className="flex justify-between items-center py-1 border-t border-emerald-100/30">
+                                    <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">Subtotal (Gross + VAT)</span>
+                                    <span className="font-bold text-gray-800">{formatNepaliCurrency(calcLineTotal(editingRow))}</span>
+                                </div>
+                            </>
+                        )}
+                        {/* Carrier Cost Row (Only calculated/displayed if Include CC is checked) */}
+                        {editingRow.include_cc && (
+                            <div className="flex justify-between items-center py-1 border-t border-emerald-100/30 bg-emerald-50 px-2 py-1.5 rounded">
+                                <span className="text-emerald-700 font-bold uppercase tracking-wider text-[10px]">Total Item Carrier Cost</span>
+                                <span className="font-bold text-emerald-700">{formatNepaliCurrency(Number(editingRow.carrier_cost) || 0)}</span>
+                            </div>
+                        )}
+                        {/* Divider */}
+                        <div className="border-t border-emerald-200/60 my-2"></div>
+                        {/* Net Payable Row */}
+                        <div className="flex justify-between items-baseline pt-1 px-1">
+                            <span className="text-emerald-900 font-black uppercase tracking-wider text-xs">Net Payable Amount</span>
+                            <span className="text-2xl sm:text-3xl font-black text-emerald-900">
+                                {formatNepaliCurrency(
+                                    calcLineTotal(editingRow) + (editingRow.include_cc ? (Number(editingRow.carrier_cost) || 0) : 0)
+                                )}
+                            </span>
+                        </div>
+                    </div>
                 </div>
-                <Input
-                  type="number"
-                  min={0}
-                  placeholder="0"
-                  className="w-full"
-                  value={editingRow.carrier_cost ?? ""}
-                  onChange={(e) => setEditingRow({...editingRow, carrier_cost: Number(e.target.value)})}
-                />
-                <p className="text-[9px] text-gray-400 leading-tight">
-                  Auto-calculated based on Cost Price and Free Qty
-                </p>
-              </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700 uppercase">Maximum Retail Price (MRP)</label>
-                <Input
-                  type="number"
-                  min={0}
-                  placeholder="0"
-                  className="w-full"
-                  value={editingRow.mrp ?? ""}
-                  onChange={(e) => setEditingRow({...editingRow, mrp: Number(e.target.value)})}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                 <div className="flex gap-4">
-                    <Checkbox
-                        checked={editingRow.auto_calculate}
-                        onChange={(e) => setEditingRow({
-                            ...editingRow,
-                            auto_calculate: e.target.checked,
-                            selling_price: e.target.checked ? calculateSellingPrice(editingRow.cost_price, editingRow.profit_margin) : editingRow.selling_price
-                        })}
-                    >
-                        <span className="text-xs">Auto Calculate Selling Price</span>
-                    </Checkbox>
-                    <Checkbox
-                        checked={editingRow.vat_included}
-                        onChange={(e) => setEditingRow({ ...editingRow, vat_included: e.target.checked })}
-                    >
-                        <span className="text-xs">13% VAT Included</span>
-                    </Checkbox>
-                 </div>
-
-                 <div className="text-right">
-                    <p className="text-[10px] text-gray-500 uppercase font-black">Selling Price</p>
-                    <Input 
-                        type="number" 
-                        disabled={editingRow.auto_calculate}
-                        className={`text-right font-bold w-40 ml-auto h-10 ${editingRow.auto_calculate ? "bg-gray-50 border-gray-100" : "bg-white border-primary/20"}`}
-                        value={editingRow.selling_price}
-                        onChange={(e) => setEditingRow({...editingRow, selling_price: Number(e.target.value)})}
+                {/* Right Column: Carrier Cost Input */}
+                <div className="md:col-span-1 bg-white/60 p-4 rounded-xl border border-emerald-100/50 space-y-2">
+                    <div className="flex justify-between items-center">
+                        <label className="text-xs font-bold text-emerald-850 uppercase tracking-wide">Carrier Cost</label>
+                        <span className="text-[9px] font-black text-emerald-750 bg-emerald-100/60 px-2 py-0.5 rounded border border-emerald-250/20">
+                            Auto: {calculateCarrierCost(editingRow.cost_price, editingRow.free_qty || 0)} NPR
+                        </span>
+                    </div>
+                    <Input
+                        type="number"
+                        min={0}
+                        disabled={!editingRow.include_cc}
+                        placeholder="0"
+                        className="w-full h-10 font-bold bg-white border-emerald-200/50 focus:border-emerald-500 focus:ring-emerald-500 text-emerald-800 disabled:bg-emerald-50/50 disabled:text-emerald-800/40"
+                        value={editingRow.include_cc ? (editingRow.carrier_cost ?? "") : 0}
+                        onChange={(e) => setEditingRow({...editingRow, carrier_cost: Number(e.target.value)})}
                     />
-                 </div>
-            </div>
-
-            {/* Line Summary */}
-            <div className="bg-green-50 border border-green-100 rounded-xl p-4 flex justify-between items-center">
-                <div className="text-green-800">
-                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-70">Subtotal for this Item</p>
-                    <p className="text-2xl font-black">
-                        {formatNepaliCurrency(calcLineTotal(editingRow))}
-                    </p>
-                    <p className="text-[10px] font-bold text-green-600 mt-1">
-                      Adjusted Unit Cost: {formatNepaliCurrency(((editingRow.quantity * editingRow.cost_price) + (Number(editingRow.carrier_cost) || 0)) / (editingRow.quantity + (editingRow.free_qty || 0)))}
-                    </p>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 shadow-sm">
-                    <Package size={20} />
-                </div>
-            </div>
+                </div>            </div>
           </div>
         )}
       </Modal>

@@ -398,6 +398,7 @@ function StockTab({ batches }: { batches: any[] }) {
       <Table 
         columns={columns} 
         dataSource={batches} 
+        rowKey="id" 
         pagination={false}
         size="small"
         className="erp-table border border-gray-200 rounded-lg overflow-hidden"
@@ -460,6 +461,7 @@ function MovementHistoryTab({ batches }: { batches: any[] }) {
       <Table 
         columns={columns} 
         dataSource={movements} 
+        rowKey="id" 
         pagination={{ pageSize: 15 }}
         size="small"
         className="erp-table border border-gray-200 rounded-lg overflow-hidden"
@@ -574,6 +576,7 @@ function PurchasesTab({ items }: { items: any[] }) {
       <Table 
         columns={columns} 
         dataSource={items} 
+        rowKey="id" 
         pagination={{ pageSize: 15 }}
         size="small"
         className="erp-table border border-gray-200 rounded-lg overflow-hidden"
@@ -610,6 +613,7 @@ function SalesTab({ items }: { items: any[] }) {
       <Table 
         columns={columns} 
         dataSource={items} 
+        rowKey="id" 
         pagination={{ pageSize: 15 }}
         size="small"
         className="erp-table border border-gray-200 rounded-lg overflow-hidden"

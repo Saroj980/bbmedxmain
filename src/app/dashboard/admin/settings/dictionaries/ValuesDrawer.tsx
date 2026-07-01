@@ -77,6 +77,7 @@ export default function ValuesDrawer({ open, onClose, category }: any) {
         </div>
 
         <Table
+          rowKey="id"
           loading={loading}
           dataSource={values}
           columns={columns}

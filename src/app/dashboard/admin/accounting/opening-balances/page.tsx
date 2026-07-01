@@ -360,6 +360,7 @@ export default function OpeningBalancesPage() {
             <Table
               columns={columns}
               dataSource={filteredData}
+              rowKey="id"
               loading={loading}
               pagination={false}
               size="small"

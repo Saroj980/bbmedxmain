@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { sidebarMenu } from "@/constants/menus";
 import { roleBasePath } from "@/constants/rolePaths";
 import { useUserStore } from "@/store/userStore";
+import { useFirmInfo } from "@/hooks/useFirmInfo";
 import { cn } from "@/lib/utils";
 import { Menu, X, ChevronDown } from "lucide-react";
 
@@ -24,11 +26,13 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const [openMenus, setOpenMenus] = useState<string[]>([]);
+  const firmInfo = useFirmInfo();
 
   const user = useUserStore((s) => s.user);
   const permissions = useUserStore((s) => s.permissions);
 
   const basePath = roleBasePath[user?.role ?? "staff"];
+  const currentMenu = sidebarMenu;
 
   const buildPath = (moduleBase: string | undefined, href: string) => {
     const safeBase = moduleBase ? `/${moduleBase}` : "";
@@ -42,7 +46,7 @@ export default function Sidebar({
     let activeParent: string | null = null;
     const currentPath = normalizePath(pathname);
     
-    for (const item of sidebarMenu) {
+    for (const item of currentMenu) {
       if (!item.children) continue;
 
       const isChildActive = item.children.some((child) => {
@@ -94,8 +98,26 @@ export default function Sidebar({
         )}
       >
         <div className="flex items-center justify-between px-4 py-4 border-b border-white/10">
-          {!collapsed && (
-            <h1 className="font-bold text-2xl tracking-wide">BBMedX</h1>
+          {!collapsed ? (
+            <div className="flex items-center gap-2 max-w-[150px]">
+              <div className="bg-white rounded-md p-1">
+                <img 
+                  src="/logo.png" 
+                  alt="BBMedX Logo" 
+                  className="object-contain h-8 w-auto"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center w-full">
+              <div className="bg-white rounded-md p-1">
+                <img 
+                  src="/logo.png" 
+                  alt="BBMedX Logo" 
+                  className="object-contain h-6 w-auto"
+                />
+              </div>
+            </div>
           )}
 
           <button
@@ -111,8 +133,8 @@ export default function Sidebar({
         </div>
 
         <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
-          {sidebarMenu
-            .filter((item) => permissions.includes(item.permission))
+          {currentMenu
+            .filter((item) => user?.role === "super_admin" || !item.permission || permissions.includes(item.permission))
             .map((item) => {
               const Icon = item.icon;
               const hasChildren = Array.isArray(item.children);
@@ -170,7 +192,7 @@ export default function Sidebar({
                       href={fullParentHref}
                       onClick={() => hasChildren && toggleMenu(item.label)}
                       className={cn(
-                        "group flex items-center w-full px-4 py-2 rounded-lg transition-colors hover:bg-white/20",
+                        "group flex items-center w-full px-4 py-2 rounded-lg transition-colors hover:bg-white/20 cursor-pointer",
                         activeClass
                       )}
                     >
@@ -180,7 +202,7 @@ export default function Sidebar({
                     <button
                       onClick={() => hasChildren && toggleMenu(item.label)}
                       className={cn(
-                        "group flex items-center w-full px-4 py-2 rounded-lg transition-colors hover:bg-white/20",
+                        "group flex items-center w-full px-4 py-2 rounded-lg transition-colors hover:bg-white/20 cursor-pointer",
                         activeClass
                       )}
                     >
@@ -197,7 +219,7 @@ export default function Sidebar({
                     >
                       <div className="overflow-hidden ml-10 space-y-1">
                         {item.children!.map((child) => {
-                          if (!permissions.includes(child.permission)) return null;
+                          if (user?.role !== "super_admin" && child.permission && !permissions.includes(child.permission)) return null;
 
                           const fullHref = normalizePath(buildPath(item.base, child.href));
                           const currentPath = normalizePath(pathname);
@@ -208,7 +230,7 @@ export default function Sidebar({
                               href={fullHref}
                               key={child.label}
                               className={cn(
-                                "block px-3 py-1.5 text-sm rounded-md transition-colors",
+                                "block px-3 py-1.5 text-sm rounded-md transition-colors cursor-pointer",
                                 isActive
                                   ? "bg-white/30 font-semibold"
                                   : "hover:bg-white/20 text-white/90"

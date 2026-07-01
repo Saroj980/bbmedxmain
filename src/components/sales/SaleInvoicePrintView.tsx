@@ -26,6 +26,8 @@ export default function SaleInvoicePrintView({ sale, summary, systemSettings }: 
 
   /* ---- Totals ---- */
   const grossAmount = Number(summary?.gross_amount || 0);
+  const freeCarrierCost = Number(summary?.free_carrier_cost || 0);
+  const grossSalesValue = Math.max(0, grossAmount - freeCarrierCost);
   const taxableAmount = items.reduce((sum: number, i: any) => i.vat_included ? sum + Number(i.inventory_value || 0) : sum, 0);
   const vatAmount = Number(summary?.vat_amount || 0);
   const discountAmount = Number(summary?.discount_amount || 0);
@@ -34,21 +36,28 @@ export default function SaleInvoicePrintView({ sale, summary, systemSettings }: 
   const nepaliDate = sale?.invoice_date ? new NepaliDate(new Date(sale.invoice_date)).format("YYYY-MM-DD") : "—";
   const invoiceTime = sale?.created_at ? dayjs(sale.created_at).format("HH:mm A") : dayjs().format("HH:mm A");
 
-  const overallDiscountPercent = grossAmount > 0 ? (discountAmount / grossAmount) * 100 : 0;
+  const overallDiscountPercent = grossSalesValue > 0 ? (discountAmount / grossSalesValue) * 100 : 0;
+
+  /* ---- Returns ---- */
+  const returnedAmount = Number(summary?.returned_amount || 0);
+  const finalPayable = Number(summary?.final_payable ?? totalAmount);
+  const returns = sale?.returns || [];
 
   return (
-    <div className="p-8 text-[11px] leading-tight font-sans text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="p-8 text-[11px] leading-tight font-sans text-gray-900" style={{ fontFamily: "var(--font-outfit), sans-serif" }}>
 
-      <PrintHeader systemSettings={systemSettings} title="Tax Invoice" />
+      <PrintHeader systemSettings={systemSettings} title="Sales Invoice" />
 
       {/* ======== INFO SECTION ======== */}
       <div className="grid grid-cols-2 gap-8 mb-6 text-[10px]">
         {/* Bill To */}
-        <div className="space-y-1.5">
-          <h4 className="font-black uppercase text-[9px] text-gray-400 tracking-wider">Bill To:</h4>
-          <div className="text-xs font-bold text-gray-900">{customer.name}</div>
-          <div className="text-gray-600">{customer.address || "Address: —"}</div>
-          <div className="text-gray-600">PAN/VAT No: <span className="font-bold">{customer.pan_no || "—"}</span></div>
+        <div className="space-y-1">
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-black uppercase text-[9px] text-gray-400 tracking-wider">Bill To:</span>
+            <span className="text-xs font-bold text-gray-900">{customer.name}</span>
+          </div>
+          <div className="text-gray-600">Address: {customer.address || "—"}</div>
+          <div className="text-gray-600">{customer.is_vat_registered ? "VAT No:" : "PAN No:"} <span className="font-bold">{customer.pan_no || "—"}</span></div>
           <div className="text-gray-600">Contact: {customer.phone || customer.email || "—"}</div>
         </div>
 
@@ -98,11 +107,20 @@ export default function SaleInvoicePrintView({ sale, summary, systemSettings }: 
         <tbody>
           {items.map((item: any, idx: number) => {
             const lineAmount = Number(item.inventory_value || 0);
+            const lineCC = Number(item.free_carrier_cost || 0);
+            const lineGross = Math.max(0, lineAmount - lineCC);
             return (
               <tr key={item.id} className="border-b border-gray-300">
                 <td className="border border-gray-900 px-2 py-1.5 text-center font-medium">{idx + 1}</td>
                 <td className="border border-gray-900 px-2 py-1.5 text-center text-gray-500 uppercase">{item.hs_code || "—"}</td>
-                <td className="border border-gray-900 px-2 py-1.5 font-bold text-gray-900">{item.product?.name}</td>
+                <td className="border border-gray-900 px-2 py-1.5 font-bold text-gray-900">
+                  <div>{item.product?.name}</div>
+                  {lineCC > 0 && (
+                    <div className="text-[7px] text-emerald-600 font-bold uppercase mt-0.5 tracking-wider">
+                      Includes CC: Rs. {lineCC.toFixed(2)}
+                    </div>
+                  )}
+                </td>
                 <td className="border border-gray-900 px-2 py-1.5 text-center text-gray-600 font-medium">{item.batch?.batch_no || "—"}</td>
                 <td className="border border-gray-900 px-2 py-1.5 text-center text-gray-600">
                   {item.batch?.expiry_date ? dayjs(item.batch.expiry_date).format("YYYY-MM") : "—"}
@@ -133,7 +151,12 @@ export default function SaleInvoicePrintView({ sale, summary, systemSettings }: 
                   {formatNepaliCurrency(item.selling_price)}
                 </td>
                 <td className="border border-gray-900 px-2 py-1.5 text-right font-black text-gray-900">
-                  {formatNepaliCurrency(lineAmount)}
+                  <div>{formatNepaliCurrency(lineGross)}</div>
+                  {lineCC > 0 && (
+                    <div className="text-[7px] text-emerald-600 font-semibold leading-none mt-0.5">
+                      (CC: +{lineCC.toFixed(2)})
+                    </div>
+                  )}
                 </td>
               </tr>
             );
@@ -144,28 +167,42 @@ export default function SaleInvoicePrintView({ sale, summary, systemSettings }: 
         <tfoot>
           <tr className="font-bold">
             <td colSpan={9} className="border border-gray-900 px-3 py-1.5 text-right uppercase text-[9px] tracking-wider text-gray-500">
-              Gross Total
+              Gross Sales Value
             </td>
             <td className="border border-gray-900 px-2 py-1.5 text-right font-bold text-gray-900">
-              {formatNepaliCurrency(grossAmount)}
+              {formatNepaliCurrency(grossSalesValue)}
             </td>
           </tr>
-          <tr className="font-bold bg-gray-50">
-            <td colSpan={9} className="border border-gray-900 px-3 py-1.5 text-right uppercase text-[9px] tracking-wider text-gray-900">
-              Taxable Amount
-            </td>
-            <td className="border border-gray-900 px-2 py-1.5 text-right font-black text-gray-900">
-              {formatNepaliCurrency(taxableAmount)}
-            </td>
-          </tr>
-          <tr className="font-bold">
-            <td colSpan={9} className="border border-gray-900 px-3 py-1.5 text-right uppercase text-[9px] tracking-wider text-gray-500">
-              VAT (13%)
-            </td>
-            <td className="border border-gray-900 px-2 py-1.5 text-right font-bold text-orange-700">
-              {formatNepaliCurrency(vatAmount)}
-            </td>
-          </tr>
+          {freeCarrierCost > 0 && (
+            <tr className="font-bold bg-emerald-50/20 text-emerald-800">
+              <td colSpan={9} className="border border-gray-900 px-3 py-1.5 text-right uppercase text-[9px] tracking-wider font-black">
+                Carrier Cost on Free Items
+              </td>
+              <td className="border border-gray-900 px-2 py-1.5 text-right font-bold">
+                {formatNepaliCurrency(freeCarrierCost)}
+              </td>
+            </tr>
+          )}
+          {vatAmount > 0 && (
+            <>
+              <tr className="font-bold bg-gray-50">
+                <td colSpan={9} className="border border-gray-900 px-3 py-1.5 text-right uppercase text-[9px] tracking-wider text-gray-900">
+                  Taxable Amount
+                </td>
+                <td className="border border-gray-900 px-2 py-1.5 text-right font-black text-gray-900">
+                  {formatNepaliCurrency(taxableAmount)}
+                </td>
+              </tr>
+              <tr className="font-bold">
+                <td colSpan={9} className="border border-gray-900 px-3 py-1.5 text-right uppercase text-[9px] tracking-wider text-gray-500">
+                  VAT (13%)
+                </td>
+                <td className="border border-gray-900 px-2 py-1.5 text-right font-bold text-orange-700">
+                  {formatNepaliCurrency(vatAmount)}
+                </td>
+              </tr>
+            </>
+          )}
           <tr className="font-bold border-t-2 border-gray-900">
             <td colSpan={9} className="border border-gray-900 px-3 py-1.5 text-right uppercase text-[9px] tracking-wider text-gray-900">
                 Total Amount
@@ -196,12 +233,65 @@ export default function SaleInvoicePrintView({ sale, summary, systemSettings }: 
         </tfoot>
       </table>
 
+      {/* ======== RETURNS SECTION ======== */}
+      {returns.length > 0 && (
+        <div className="mb-6">
+          <table className="w-full border-collapse border border-gray-900 text-[10px]">
+            <thead>
+              <tr className="bg-orange-50 font-black uppercase text-[8px] text-orange-800">
+                <th className="border border-gray-900 px-2 py-2 text-left" colSpan={7}>Credit Notes / Returns</th>
+                <th className="border border-gray-900 px-2 py-2 text-right w-20">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {returns.map((ret: any) => (
+                <tr key={ret.id} className="border-b border-gray-300">
+                  <td className="border border-gray-900 px-2 py-1.5 font-bold text-gray-900" colSpan={7}>
+                    <div>{ret.return_no}</div>
+                    <div className="text-[8px] text-gray-500 font-medium">
+                      {ret.return_date ? dayjs(ret.return_date).format("YYYY-MM-DD") : "—"}
+                      {ret.remarks && <span className="ml-2 text-gray-700 italic font-bold">({ret.remarks})</span>}
+                      {ret.items?.map((ri: any) => (
+                        <span key={ri.id} className="ml-2 text-orange-700">
+                          {ri.product?.name}: {Math.round(Number(ri.quantity))} + {Math.round(Number(ri.free_qty))} Free
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="border border-gray-900 px-2 py-1.5 text-right font-bold text-red-600">
+                    ({formatNepaliCurrency(ret.total_amount)})
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="font-bold bg-orange-50">
+                <td colSpan={7} className="border border-gray-900 px-3 py-1.5 text-right uppercase text-[9px] tracking-wider text-orange-800 font-black">
+                  Total Returns
+                </td>
+                <td className="border border-gray-900 px-2 py-1.5 text-right font-black text-red-700">
+                  ({formatNepaliCurrency(returnedAmount)})
+                </td>
+              </tr>
+              <tr className="font-black bg-emerald-900 text-white">
+                <td colSpan={7} className="border border-gray-900 px-3 py-2.5 text-right uppercase text-[10px] tracking-widest">
+                  Final Payable
+                </td>
+                <td className="border border-gray-900 px-2 py-2.5 text-right text-xs font-black">
+                  {formatNepaliCurrency(finalPayable)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+
       {/* ======== AMOUNT IN WORDS ======== */}
       <div className="border-2 border-gray-900 px-4 py-3 mb-8 bg-gray-50 relative overflow-hidden">
         {/* <div className="absolute top-0 right-0 p-1 opacity-10 font-black text-4xl uppercase pointer-events-none">OFFICIAL</div> */}
-        <span className="font-black text-[9px] uppercase text-gray-400 block mb-1">Amount in Words:</span>
+        <span className="font-black text-[9px] uppercase text-gray-400 block mb-1">{returnedAmount > 0 ? "Final Payable in Words:" : "Amount in Words:"}</span>
         <span className="text-xs font-bold italic text-gray-900">
-          Rupees {numberToWords(totalAmount)}.
+          Rupees {numberToWords(returnedAmount > 0 ? finalPayable : totalAmount)}.
         </span>
       </div>
 
@@ -238,7 +328,7 @@ export default function SaleInvoicePrintView({ sale, summary, systemSettings }: 
 
       {/* ======== FOOTER ======== */}
       <div className="text-center text-[8px] text-gray-400 mt-12 border-t pt-2 space-y-1 font-medium tracking-wide">
-        <p>This is a computer-generated TAX INVOICE. Generated by BBMedx ERP System.</p>
+        <p>This is a computer-generated SALES INVOICE. Generated by BBMedx ERP System.</p>
         <p className="text-[7px]">Printed on {isClient ? dayjs().format("YYYY-MM-DD HH:mm:ss") : "—"}</p>
       </div>
     </div>

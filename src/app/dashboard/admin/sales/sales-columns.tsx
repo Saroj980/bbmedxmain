@@ -109,11 +109,23 @@ export const salesColumns = (
     {
       header: "Gross",
       accessorKey: "gross_amount",
-      cell: ({ row }) => (
-        <span className="text-sm text-right block text-gray-700">
-          {formatNepaliCurrency(row.original.gross_amount)}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const gross = Number(row.original.gross_amount || 0);
+        const cc = Number(row.original.free_carrier_cost || 0);
+        const salesVal = Math.max(0, gross - cc);
+        return (
+          <div className="text-right flex flex-col items-end justify-center">
+            <span className="text-sm text-gray-950 font-medium">
+              {formatNepaliCurrency(salesVal)}
+            </span>
+            {cc > 0 && (
+              <span className="text-[9px] font-semibold text-emerald-600 leading-none mt-0.5">
+                (CC: +{formatNepaliCurrency(cc)})
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       header: "Discount",

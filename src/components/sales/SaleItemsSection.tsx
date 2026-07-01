@@ -187,9 +187,14 @@ export default function SaleItemsSection({
                     {availability.units.map((u: any) => (
                       <span
                         key={u.unit_id}
-                        className="bg-white border px-2 py-1 rounded"
+                        className="bg-white border px-2 py-1 rounded text-gray-700 font-medium"
                       >
                         {formatNepaliCurrency(u.available)} {u.unit_name}
+                        {((u.free_available || 0) > 0 || (u.regular_available || 0) > 0) && (
+                          <span className="text-[10px] text-gray-500 font-normal ml-1">
+                            ({formatNepaliCurrency(u.regular_available || 0)} Reg + {formatNepaliCurrency(u.free_available || 0)} Free)
+                          </span>
+                        )}
                       </span>
                     ))}
                   </div>
@@ -257,7 +262,7 @@ export default function SaleItemsSection({
                         value: b.id,
                         label: `${b.batch_no} | Exp ${dayjs(b.expiry_date).format(
                           "YYYY-MM-DD"
-                        )} | ${b.current_stock}`,
+                        )} | Stock: ${b.current_stock} (Reg: ${b.regular_stock || 0}, Free: ${b.free_stock || 0})`,
                       }))}
                   />
                   {row.batch_id && availability && (() => {

@@ -88,6 +88,14 @@ export default function CreateSalePage() {
     [items]
   );
 
+  const totalFreeCarrierCost = useMemo(() => {
+    return items.reduce((sum, item) => sum + Number(item.free_carrier_cost || 0), 0);
+  }, [items]);
+
+  const grossSalesValue = useMemo(() => {
+    return Math.max(0, grossAmount - totalFreeCarrierCost);
+  }, [grossAmount, totalFreeCarrierCost]);
+
   const taxableAmount = useMemo(
     () => items.reduce((sum, i) => (i.vat_included ? sum + Number((i.inventory_value ?? (i.quantity * i.selling_price)) || 0) : sum), 0),
     [items]
@@ -259,19 +267,30 @@ export default function CreateSalePage() {
               
               <div className="space-y-3 relative">
                 <div className="flex justify-between text-[11px] text-gray-500 font-medium bg-gray-50/50 p-2 rounded">
-                  <span>Gross Total</span>
-                  <span className="text-gray-900 font-bold">{formatNepaliCurrency(grossAmount)}</span>
+                  <span>Gross Sales Value</span>
+                  <span className="text-gray-900 font-bold">{formatNepaliCurrency(grossSalesValue)}</span>
                 </div>
                 
-                <div className="flex justify-between text-[11px] text-gray-500 font-medium px-2">
-                  <span>Taxable Amount</span>
-                  <span className="text-gray-900">{formatNepaliCurrency(taxableAmount)}</span>
-                </div>
+                {vatAmount > 0 && (
+                  <>
+                    <div className="flex justify-between text-[11px] text-gray-500 font-medium px-2">
+                      <span>Taxable Amount</span>
+                      <span className="text-gray-900">{formatNepaliCurrency(taxableAmount)}</span>
+                    </div>
 
-                <div className="flex justify-between text-[11px] text-gray-500 font-medium px-2">
-                  <span>Total VAT (13%)</span>
-                  <span className="text-orange-600">{formatNepaliCurrency(vatAmount)}</span>
-                </div>
+                    <div className="flex justify-between text-[11px] text-gray-500 font-medium px-2">
+                      <span>Total VAT (13%)</span>
+                      <span className="text-orange-600">{formatNepaliCurrency(vatAmount)}</span>
+                    </div>
+                  </>
+                )}
+
+                {totalFreeCarrierCost > 0 && (
+                  <div className="flex justify-between text-[11px] text-gray-500 font-medium px-2 bg-emerald-50/30 py-1 rounded">
+                    <span>Carrier Cost on Free Items</span>
+                    <span className="text-emerald-600 font-bold">{formatNepaliCurrency(totalFreeCarrierCost)}</span>
+                  </div>
+                )}
 
                 <div className="flex justify-between items-center text-[11px] text-gray-500 font-medium px-2 gap-2">
                   <span>Overall Discount</span>
@@ -284,7 +303,7 @@ export default function CreateSalePage() {
                         value={discountPercent || ""}
                         onChange={e => {
                           const pct = Number(e.target.value);
-                          const amt = (grossAmount * pct) / 100;
+                          const amt = (grossSalesValue * pct) / 100;
                           setDiscountPercent(pct);
                           setDiscount(amt);
                         }}
@@ -298,7 +317,7 @@ export default function CreateSalePage() {
                         value={discount || ""}
                         onChange={e => {
                           const amt = Number(e.target.value);
-                          const pct = grossAmount > 0 ? (amt / grossAmount) * 100 : 0;
+                          const pct = grossSalesValue > 0 ? (amt / grossSalesValue) * 100 : 0;
                           setDiscount(amt);
                           setDiscountPercent(pct);
                         }}

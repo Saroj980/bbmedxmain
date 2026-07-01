@@ -246,6 +246,7 @@ export default function StockRegisterPage() {
         <Table
           dataSource={filtered}
           columns={columns}
+          rowKey={(r) => `${r.batch_no}-${r.date}-${r.stock_in}-${r.stock_out}`}
           loading={loading}
           pagination={{ pageSize: 20 }}
           size="small"

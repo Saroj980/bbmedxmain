@@ -132,7 +132,7 @@ export default function BalanceSheetPrintView({ report, fiscalYear, asOnDateBS, 
   return (
     <div className="w-full bg-white print:m-0">
       <div className="max-w-[1122px] mx-auto my-8 bg-white shadow-lg print:shadow-none print:m-0 print:w-full" style={{ minHeight: '794px' }}>
-        <div className="p-8 text-[11px] leading-tight font-sans text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
+        <div className="p-8 text-[11px] leading-tight font-sans text-gray-900" style={{ fontFamily: "var(--font-outfit), sans-serif" }}>
           
           <PrintHeader systemSettings={systemSettings} title="BALANCE SHEET" />
 
